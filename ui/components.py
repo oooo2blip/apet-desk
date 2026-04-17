@@ -242,35 +242,94 @@ class SpeechBubble:
         ]
     }
     
-    def __init__(self, canvas: tk.Canvas, pet_size: int = 100):
-        self._canvas = canvas
+    TRANSPARENT_COLOR = "#00FF00"
+    
+    def __init__(
+        self, 
+        root: tk.Tk, 
+        pet_size: int = 100,
+        get_pet_position: Optional[Callable[[], Tuple[int, int]]] = None
+    ):
+        self._root = root
         self._pet_size = pet_size
-        self._bubble_items: List[int] = []
+        self._get_pet_position = get_pet_position
+        self._bubble_window: Optional[tk.Toplevel] = None
+        self._canvas: Optional[tk.Canvas] = None
         self._hide_timer: Optional[str] = None
         self._is_visible: bool = False
+        self._current_text: str = ""
+        self._current_emotion: str = "happy"
     
-    def show(self, text: str, duration: int = 3000, emotion: str = "happy"):
-        self.hide()
+    def _create_bubble_window(self):
+        if self._bubble_window is not None:
+            return
         
-        center = self._pet_size // 2
-        bubble_x = center
-        bubble_y = center - 60
+        self._bubble_window = tk.Toplevel(self._root)
+        self._bubble_window.overrideredirect(True)
+        self._bubble_window.attributes("-topmost", True)
+        self._bubble_window.attributes("-transparentcolor", self.TRANSPARENT_COLOR)
+        self._bubble_window.withdraw()
         
-        padding_x = 15
-        padding_y = 10
-        min_width = 80
-        min_height = 30
+        self._canvas = tk.Canvas(
+            self._bubble_window,
+            width=300,
+            height=150,
+            bg=self.TRANSPARENT_COLOR,
+            highlightthickness=0
+        )
+        self._canvas.pack(fill=tk.BOTH, expand=True)
+    
+    def _calculate_bubble_size(self, text: str) -> Tuple[int, int]:
+        padding_x = 20
+        padding_y = 15
+        min_width = 100
+        min_height = 50
         
         text_width = len(text) * 12 + padding_x * 2
-        text_height = 20 + padding_y * 2
+        text_height = 40 + padding_y
         
         bubble_width = max(min_width, text_width)
         bubble_height = max(min_height, text_height)
         
-        bubble_x1 = bubble_x - bubble_width // 2
-        bubble_y1 = bubble_y - bubble_height // 2
-        bubble_x2 = bubble_x + bubble_width // 2
-        bubble_y2 = bubble_y + bubble_height // 2
+        return bubble_width, bubble_height
+    
+    def _calculate_position(self, bubble_width: int, bubble_height: int) -> Tuple[int, int]:
+        if self._get_pet_position is not None:
+            pet_x, pet_y = self._get_pet_position()
+        else:
+            pet_x = self._root.winfo_x()
+            pet_y = self._root.winfo_y()
+        
+        bubble_x = pet_x + (self._pet_size - bubble_width) // 2
+        bubble_y = pet_y - bubble_height - 10
+        
+        screen_width = self._root.winfo_screenwidth()
+        screen_height = self._root.winfo_screenheight()
+        
+        if bubble_x < 10:
+            bubble_x = 10
+        elif bubble_x + bubble_width > screen_width - 10:
+            bubble_x = screen_width - bubble_width - 10
+        
+        if bubble_y < 10:
+            bubble_y = pet_y + self._pet_size + 10
+        
+        return bubble_x, bubble_y
+    
+    def _draw_bubble(self, text: str, emotion: str):
+        if self._canvas is None:
+            return
+        
+        self._canvas.delete("all")
+        
+        bubble_width, bubble_height = self._calculate_bubble_size(text)
+        center_x = 150
+        center_y = 60
+        
+        bubble_x1 = center_x - bubble_width // 2
+        bubble_y1 = center_y - bubble_height // 2
+        bubble_x2 = center_x + bubble_width // 2
+        bubble_y2 = center_y + bubble_height // 2
         
         bg_color = ColorPalette.WHITE
         if emotion == "happy":
@@ -279,38 +338,70 @@ class SpeechBubble:
             bg_color = "#E6F7FF"
         elif emotion == "tired":
             bg_color = "#F0F0F0"
+        elif emotion == "curious":
+            bg_color = "#E8F5E9"
+        elif emotion == "playful":
+            bg_color = "#FCE4EC"
         
-        self._bubble_items.append(self._canvas.create_oval(
+        self._canvas.create_oval(
             bubble_x1, bubble_y1, bubble_x2, bubble_y2,
-            fill=bg_color, outline=ColorPalette.BLACK, width=1
-        ))
+            fill=bg_color, outline=ColorPalette.BLACK, width=2
+        )
         
-        self._bubble_items.append(self._canvas.create_oval(
-            bubble_x1 + 2, bubble_y1 + 2, bubble_x2 - 2, bubble_y2 - 2,
+        self._canvas.create_oval(
+            bubble_x1 + 3, bubble_y1 + 3, bubble_x2 - 3, bubble_y2 - 3,
             fill=bg_color, outline=""
-        ))
+        )
         
-        tail_x = center
+        tail_x = center_x
         tail_y1 = bubble_y2
-        tail_y2 = bubble_y2 + 10
-        self._bubble_items.append(self._canvas.create_polygon(
-            tail_x - 6, tail_y1,
-            tail_x + 6, tail_y1,
+        tail_y2 = bubble_y2 + 20
+        tail_offset = 12
+        
+        self._canvas.create_polygon(
+            tail_x - tail_offset, tail_y1,
+            tail_x + tail_offset, tail_y1,
             tail_x, tail_y2,
             fill=bg_color, outline=ColorPalette.BLACK
-        ))
+        )
         
-        self._bubble_items.append(self._canvas.create_text(
-            bubble_x, bubble_y, text=text,
-            font=("Arial", 10), fill=ColorPalette.BLACK
-        ))
+        self._canvas.create_text(
+            center_x, center_y, text=text,
+            font=("Microsoft YaHei", 11), fill=ColorPalette.BLACK
+        )
+    
+    def show(self, text: str, duration: int = 3000, emotion: str = "happy"):
+        self.hide()
+        
+        self._create_bubble_window()
+        
+        if self._bubble_window is None or self._canvas is None:
+            return
+        
+        self._current_text = text
+        self._current_emotion = emotion
+        
+        self._draw_bubble(text, emotion)
+        
+        bubble_width, bubble_height = self._calculate_bubble_size(text)
+        window_width = 300
+        window_height = 150
+        
+        self._bubble_window.geometry(f"{window_width}x{window_height}")
+        
+        bubble_x, bubble_y = self._calculate_position(window_width, window_height)
+        self._bubble_window.geometry(f"+{bubble_x}+{bubble_y}")
+        
+        self._bubble_window.deiconify()
+        self._bubble_window.lift()
+        self._root.lift()
         
         self._is_visible = True
         
         if self._hide_timer is not None:
-            self._canvas.after_cancel(self._hide_timer)
+            self._root.after_cancel(self._hide_timer)
         
-        self._hide_timer = self._canvas.after(duration, self.hide)
+        self._hide_timer = self._root.after(duration, self.hide)
     
     def show_random(self, emotion: str = "happy", duration: int = 3000):
         phrases = self.DEFAULT_PHRASES.get(emotion, self.DEFAULT_PHRASES["happy"])
@@ -320,22 +411,30 @@ class SpeechBubble:
     def hide(self):
         if self._hide_timer is not None:
             try:
-                self._canvas.after_cancel(self._hide_timer)
+                self._root.after_cancel(self._hide_timer)
             except Exception:
                 pass
             self._hide_timer = None
         
-        for item in self._bubble_items:
+        if self._bubble_window is not None:
             try:
-                self._canvas.delete(item)
+                self._bubble_window.withdraw()
             except Exception:
                 pass
-        self._bubble_items.clear()
+        
         self._is_visible = False
     
     @property
     def is_visible(self) -> bool:
         return self._is_visible
+    
+    @property
+    def current_text(self) -> str:
+        return self._current_text
+    
+    @property
+    def current_emotion(self) -> str:
+        return self._current_emotion
 
 
 class EmotionDisplay:
@@ -382,9 +481,19 @@ class EmotionDisplay:
         }
     }
     
-    def __init__(self, canvas: tk.Canvas, pet_size: int = 100):
-        self._canvas = canvas
+    TRANSPARENT_COLOR = "#00FF00"
+    
+    def __init__(
+        self, 
+        root: tk.Tk, 
+        pet_size: int = 100,
+        get_pet_position: Optional[Callable[[], Tuple[int, int]]] = None
+    ):
+        self._root = root
         self._pet_size = pet_size
+        self._get_pet_position = get_pet_position
+        self._emotion_window: Optional[tk.Toplevel] = None
+        self._canvas: Optional[tk.Canvas] = None
         self._emotion_items: List[int] = []
         self._hide_timer: Optional[str] = None
         self._animation_timer: Optional[str] = None
@@ -392,8 +501,55 @@ class EmotionDisplay:
         self._current_emotion: Optional[str] = None
         self._animation_frame: int = 0
     
+    def _create_emotion_window(self):
+        if self._emotion_window is not None:
+            return
+        
+        self._emotion_window = tk.Toplevel(self._root)
+        self._emotion_window.overrideredirect(True)
+        self._emotion_window.attributes("-topmost", True)
+        self._emotion_window.attributes("-transparentcolor", self.TRANSPARENT_COLOR)
+        self._emotion_window.withdraw()
+        
+        self._canvas = tk.Canvas(
+            self._emotion_window,
+            width=200,
+            height=200,
+            bg=self.TRANSPARENT_COLOR,
+            highlightthickness=0
+        )
+        self._canvas.pack(fill=tk.BOTH, expand=True)
+    
+    def _calculate_position(self) -> Tuple[int, int]:
+        if self._get_pet_position is not None:
+            pet_x, pet_y = self._get_pet_position()
+        else:
+            pet_x = self._root.winfo_x()
+            pet_y = self._root.winfo_y()
+        
+        emotion_x = pet_x + (self._pet_size - 200) // 2
+        emotion_y = pet_y - 80
+        
+        screen_width = self._root.winfo_screenwidth()
+        screen_height = self._root.winfo_screenheight()
+        
+        if emotion_x < 10:
+            emotion_x = 10
+        elif emotion_x + 200 > screen_width - 10:
+            emotion_x = screen_width - 210
+        
+        if emotion_y < 10:
+            emotion_y = pet_y + self._pet_size + 10
+        
+        return emotion_x, emotion_y
+    
     def show(self, emotion: str = "heart", duration: int = 2000, count: int = 3):
         self.hide()
+        
+        self._create_emotion_window()
+        
+        if self._emotion_window is None or self._canvas is None:
+            return
         
         if emotion not in self.EMOTION_SYMBOLS:
             emotion = "heart"
@@ -405,44 +561,53 @@ class EmotionDisplay:
         symbols = emotion_data["symbols"]
         color = emotion_data["color"]
         
-        center = self._pet_size // 2
+        center_x = 100
+        center_y = 100
         positions = [
-            (center - 40, center - 50),
-            (center + 40, center - 45),
-            (center, center - 60),
-            (center - 25, center - 70),
-            (center + 25, center - 65)
+            (center_x - 50, center_y - 40),
+            (center_x + 50, center_y - 35),
+            (center_x, center_y - 50),
+            (center_x - 35, center_y - 60),
+            (center_x + 35, center_y - 55)
         ]
         
+        self._emotion_items = []
         for i in range(min(count, len(positions))):
             symbol = random.choice(symbols)
             x, y = positions[i]
-            offset_x = random.randint(-10, 10)
-            offset_y = random.randint(-10, 10)
+            offset_x = random.randint(-15, 15)
+            offset_y = random.randint(-15, 15)
             
             self._emotion_items.append(self._canvas.create_text(
                 x + offset_x, y + offset_y,
                 text=symbol,
-                font=("Arial", 14, "bold"),
+                font=("Segoe UI Emoji", 18),
                 fill=color
             ))
+        
+        emotion_x, emotion_y = self._calculate_position()
+        self._emotion_window.geometry(f"200x200+{emotion_x}+{emotion_y}")
+        
+        self._emotion_window.deiconify()
+        self._emotion_window.lift()
+        self._root.lift()
         
         self._is_visible = True
         self._start_animation()
         
         if self._hide_timer is not None:
-            self._canvas.after_cancel(self._hide_timer)
+            self._root.after_cancel(self._hide_timer)
         
-        self._hide_timer = self._canvas.after(duration, self.hide)
+        self._hide_timer = self._root.after(duration, self.hide)
     
     def _start_animation(self):
         if self._animation_timer is not None:
-            self._canvas.after_cancel(self._animation_timer)
+            self._root.after_cancel(self._animation_timer)
         
         self._animate_emotion()
     
     def _animate_emotion(self):
-        if not self._is_visible:
+        if not self._is_visible or self._canvas is None:
             return
         
         self._animation_frame += 1
@@ -451,11 +616,11 @@ class EmotionDisplay:
         for i, item in enumerate(self._emotion_items):
             try:
                 y_offset = -float_offset if i % 2 == 0 else float_offset
-                self._canvas.move(item, 0, y_offset * 0.5)
+                self._canvas.move(item, 0, y_offset * 0.8)
             except Exception:
                 pass
         
-        self._animation_timer = self._canvas.after(150, self._animate_emotion)
+        self._animation_timer = self._root.after(150, self._animate_emotion)
     
     def show_random(self, duration: int = 2000):
         emotions = list(self.EMOTION_SYMBOLS.keys())
@@ -465,23 +630,24 @@ class EmotionDisplay:
     def hide(self):
         if self._hide_timer is not None:
             try:
-                self._canvas.after_cancel(self._hide_timer)
+                self._root.after_cancel(self._hide_timer)
             except Exception:
                 pass
             self._hide_timer = None
         
         if self._animation_timer is not None:
             try:
-                self._canvas.after_cancel(self._animation_timer)
+                self._root.after_cancel(self._animation_timer)
             except Exception:
                 pass
             self._animation_timer = None
         
-        for item in self._emotion_items:
+        if self._emotion_window is not None:
             try:
-                self._canvas.delete(item)
+                self._emotion_window.withdraw()
             except Exception:
                 pass
+        
         self._emotion_items.clear()
         self._is_visible = False
         self._current_emotion = None
