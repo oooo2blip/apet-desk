@@ -168,6 +168,12 @@ class PetApplication:
         self._x = x
         self._y = y
         self._update_window_geometry()
+        
+        if self._speech_bubble is not None and self._speech_bubble.is_visible:
+            self._speech_bubble.update_position()
+        
+        if self._emotion_display is not None and self._emotion_display.is_visible:
+            self._emotion_display.update_position()
     
     def _on_state_change(self, state: PetState):
         if self._current_pet is not None:
