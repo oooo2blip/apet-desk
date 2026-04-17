@@ -1,4 +1,32 @@
 from enum import Enum
+from typing import Tuple
+
+
+class PastelTheme:
+    SOFT_LAVENDER = "#E6E0F8"
+    SOFT_PERIWINKLE = "#D4C4FB"
+    SOFT_MAUVE = "#F8E0FB"
+    SOFT_PINK = "#FADADD"
+    SOFT_PEACH = "#FFE5D9"
+    SOFT_CORAL = "#FFD6E0"
+    SOFT_MINT = "#E8FFF5"
+    SOFT_SAGE = "#D1FAE5"
+    SOFT_TEAL = "#CCFBF1"
+    
+    GRADIENT_BLUE_PURPLE = ("#D4C4FB", "#E6E0F8", "#F3E8FF")
+    GRADIENT_PINK_ORANGE = ("#FFD6E0", "#FADADD", "#FFE5D9")
+    GRADIENT_MINT = ("#D1FAE5", "#E8FFF5", "#CCFBF1")
+    
+    GLOW_LAVENDER = "#C4B5FD"
+    GLOW_PINK = "#F9A8D4"
+    GLOW_MINT = "#6EE7B7"
+    
+    EYE_GRADIENT_DARK = ("#A78BFA", "#8B5CF6")
+    EYE_GRADIENT_LIGHT = ("#C4B5FD", "#DDD6FE")
+    EYE_HIGHLIGHT = "#FFFFFF"
+    
+    BLUSH_COLOR = "#FECDD3"
+    INNER_EAR_COLOR = "#FBCFE8"
 
 
 class CyberpunkTheme:
@@ -37,6 +65,7 @@ class PetType(Enum):
     CAT = "cat"
     DOG = "dog"
     RABBIT = "rabbit"
+    FANTASY = "fantasy"
 
 
 class SkinColor(Enum):
@@ -45,6 +74,9 @@ class SkinColor(Enum):
     BLACK = "black"
     GRAY = "gray"
     BROWN = "brown"
+    PASTEL_LAVENDER = "pastel_lavender"
+    PASTEL_PINK = "pastel_pink"
+    PASTEL_MINT = "pastel_mint"
 
 
 class Direction(Enum):
@@ -92,7 +124,10 @@ class ColorPalette:
         SkinColor.WHITE: "#F5F5F5",
         SkinColor.BLACK: "#333333",
         SkinColor.GRAY: "#808080",
-        SkinColor.BROWN: "#8B4513"
+        SkinColor.BROWN: "#8B4513",
+        SkinColor.PASTEL_LAVENDER: PastelTheme.SOFT_LAVENDER,
+        SkinColor.PASTEL_PINK: PastelTheme.SOFT_PINK,
+        SkinColor.PASTEL_MINT: PastelTheme.SOFT_MINT
     }
     INNER_EAR_COLOR = "#FFB6C1"
     NOSE_COLOR = "pink"
@@ -108,14 +143,18 @@ class PetDisplayNames:
     PET_NAMES = {
         PetType.CAT: "猫咪",
         PetType.DOG: "狗狗",
-        PetType.RABBIT: "兔子"
+        PetType.RABBIT: "兔子",
+        PetType.FANTASY: "幻灵"
     }
     SKIN_NAMES = {
         SkinColor.ORANGE: "橘色",
         SkinColor.WHITE: "白色",
         SkinColor.BLACK: "黑色",
         SkinColor.GRAY: "灰色",
-        SkinColor.BROWN: "棕色"
+        SkinColor.BROWN: "棕色",
+        SkinColor.PASTEL_LAVENDER: "薰衣草紫",
+        SkinColor.PASTEL_PINK: "樱花粉",
+        SkinColor.PASTEL_MINT: "薄荷绿"
     }
 
 
