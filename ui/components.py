@@ -1,12 +1,14 @@
 import tkinter as tk
 from tkinter import Menu, Toplevel, Label, Scale, Button, Checkbutton
 from typing import Optional, Callable, Any, List, Tuple
+import math
 from core.config import (
     PetType,
     SkinColor,
     UIConfig,
     PetDisplayNames,
-    ColorPalette
+    ColorPalette,
+    CyberpunkTheme
 )
 from pets.factory import PetFactory, SkinManager
 import random
@@ -316,6 +318,16 @@ class SpeechBubble:
         
         return bubble_x, bubble_y
     
+    def _get_neon_colors_by_emotion(self, emotion: str) -> Tuple[str, str]:
+        color_map = {
+            "happy": (CyberpunkTheme.NEON_YELLOW, CyberpunkTheme.NEON_PINK),
+            "surprised": (CyberpunkTheme.ELECTRIC_BLUE, CyberpunkTheme.GLITCH_PURPLE),
+            "tired": (CyberpunkTheme.TECH_BLACK, CyberpunkTheme.NEON_PINK),
+            "curious": (CyberpunkTheme.CYBER_GREEN, CyberpunkTheme.ELECTRIC_BLUE),
+            "playful": (CyberpunkTheme.NEON_PINK, CyberpunkTheme.NEON_ORANGE)
+        }
+        return color_map.get(emotion, (CyberpunkTheme.ELECTRIC_BLUE, CyberpunkTheme.NEON_PINK))
+    
     def _draw_bubble(self, text: str, emotion: str):
         if self._canvas is None:
             return
@@ -331,26 +343,33 @@ class SpeechBubble:
         bubble_x2 = center_x + bubble_width // 2
         bubble_y2 = center_y + bubble_height // 2
         
-        bg_color = ColorPalette.WHITE
-        if emotion == "happy":
-            bg_color = "#FFF9E6"
-        elif emotion == "surprised":
-            bg_color = "#E6F7FF"
-        elif emotion == "tired":
-            bg_color = "#F0F0F0"
-        elif emotion == "curious":
-            bg_color = "#E8F5E9"
-        elif emotion == "playful":
-            bg_color = "#FCE4EC"
+        primary_neon, secondary_neon = self._get_neon_colors_by_emotion(emotion)
+        
+        tech_bg = "#1a1a2e"
+        self._canvas.create_oval(
+            bubble_x1 + 2, bubble_y1 + 2, bubble_x2 - 2, bubble_y2 - 2,
+            fill=tech_bg, outline=""
+        )
+        
+        for i in range(3):
+            offset = (3 - i) * 2
+            width = 1 + i
+            
+            if i % 2 == 0:
+                glow_color = primary_neon
+            else:
+                glow_color = secondary_neon
+            
+            self._canvas.create_oval(
+                bubble_x1 - offset, bubble_y1 - offset,
+                bubble_x2 + offset, bubble_y2 + offset,
+                outline=glow_color,
+                width=width
+            )
         
         self._canvas.create_oval(
             bubble_x1, bubble_y1, bubble_x2, bubble_y2,
-            fill=bg_color, outline=ColorPalette.BLACK, width=2
-        )
-        
-        self._canvas.create_oval(
-            bubble_x1 + 3, bubble_y1 + 3, bubble_x2 - 3, bubble_y2 - 3,
-            fill=bg_color, outline=""
+            outline=CyberpunkTheme.NEON_YELLOW, width=2
         )
         
         tail_x = center_x
@@ -358,16 +377,47 @@ class SpeechBubble:
         tail_y2 = bubble_y2 + 20
         tail_offset = 12
         
+        for i in range(3):
+            offset = (3 - i) * 2
+            
+            if i % 2 == 0:
+                glow_color = primary_neon
+            else:
+                glow_color = secondary_neon
+            
+            scale = 1 + offset / 60
+            scaled_tail_x1 = center_x - tail_offset * scale
+            scaled_tail_x2 = center_x + tail_offset * scale
+            scaled_tail_y2 = tail_y2 + offset * 0.5
+            
+            self._canvas.create_polygon(
+                scaled_tail_x1, tail_y1 - offset,
+                scaled_tail_x2, tail_y1 - offset,
+                center_x, scaled_tail_y2,
+                outline=glow_color, width=1 + i, fill=""
+            )
+        
         self._canvas.create_polygon(
             tail_x - tail_offset, tail_y1,
             tail_x + tail_offset, tail_y1,
             tail_x, tail_y2,
-            fill=bg_color, outline=ColorPalette.BLACK
+            fill=tech_bg, outline=CyberpunkTheme.NEON_YELLOW, width=2
         )
         
+        for offset in [(-1, -1), (1, -1), (-1, 1), (1, 1),
+                       (-2, 0), (2, 0), (0, -2), (0, 2)]:
+            self._canvas.create_text(
+                center_x + offset[0], center_y + offset[1],
+                text=text,
+                font=("Microsoft YaHei", 11),
+                fill=primary_neon
+            )
+        
         self._canvas.create_text(
-            center_x, center_y, text=text,
-            font=("Microsoft YaHei", 11), fill=ColorPalette.BLACK
+            center_x, center_y,
+            text=text,
+            font=("Microsoft YaHei", 11),
+            fill=CyberpunkTheme.NEON_YELLOW
         )
     
     def show(self, text: str, duration: int = 3000, emotion: str = "happy"):

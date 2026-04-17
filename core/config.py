@@ -1,6 +1,30 @@
 from enum import Enum
 
 
+class CyberpunkTheme:
+    ELECTRIC_BLUE = "#00D4FF"
+    NEON_PINK = "#FF00FF"
+    GLITCH_PURPLE = "#9D00FF"
+    TECH_BLACK = "#0A0A0A"
+    CYBER_GREEN = "#39FF14"
+    NEON_ORANGE = "#FF5E00"
+    NEON_YELLOW = "#FFFF00"
+    
+    NEON_GLOW_COLORS = [
+        ELECTRIC_BLUE,
+        NEON_PINK,
+        GLITCH_PURPLE,
+        CYBER_GREEN,
+        NEON_ORANGE
+    ]
+    
+    GLOW_ALPHA_LAYERS = [
+        {"color": ELECTRIC_BLUE, "offset": 2, "width": 3},
+        {"color": NEON_PINK, "offset": 1, "width": 2},
+        {"color": GLITCH_PURPLE, "offset": 0, "width": 1},
+    ]
+
+
 class PetState(Enum):
     IDLE = "idle"
     WALK = "walk"

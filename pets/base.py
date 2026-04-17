@@ -1,16 +1,21 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, Tuple
+import math
 from core.config import (
     PetState,
     SkinColor,
     ColorPalette,
-    AnimationFrames
+    AnimationFrames,
+    CyberpunkTheme
 )
 
 
 class PetBase(ABC):
     PET_TYPE = None
     DISPLAY_NAME = None
+    
+    NEON_PRIMARY_COLOR = CyberpunkTheme.ELECTRIC_BLUE
+    NEON_SECONDARY_COLOR = CyberpunkTheme.NEON_PINK
     
     def __init__(self, skin_color: SkinColor = SkinColor.ORANGE):
         self._state: PetState = PetState.IDLE
@@ -25,6 +30,10 @@ class PetBase(ABC):
             PetState.SLEEP: self._draw_sleep,
             PetState.JUMP: self._draw_jump
         }
+        
+        self._neon_phase: float = 0.0
+        self._glitch_phase: float = 0.0
+        self._pulse_intensity: float = 0.0
     
     @property
     def state(self) -> PetState:
@@ -92,13 +101,147 @@ class PetBase(ABC):
     def _get_z_level(self) -> int:
         return self._frame_index % AnimationFrames.SLEEP_Z_INTERVAL
     
+    def _update_neon_phase(self):
+        self._neon_phase += 0.1
+        if self._neon_phase > 2 * math.pi:
+            self._neon_phase -= 2 * math.pi
+        
+        self._glitch_phase += 0.05
+        if self._glitch_phase > 1.0:
+            self._glitch_phase = 0.0
+        
+        if self._pulse_intensity > 0:
+            self._pulse_intensity -= 0.05
+            if self._pulse_intensity < 0:
+                self._pulse_intensity = 0
+    
+    def _get_breath_intensity(self) -> float:
+        return 0.5 + 0.5 * math.sin(self._neon_phase)
+    
+    def _get_pet_bounds(self, center: int) -> Tuple[int, int, int, int]:
+        padding = 5
+        return (
+            padding,
+            padding,
+            self._size - padding,
+            self._size - padding
+        )
+    
+    def _draw_neon_outline(self, center: int):
+        if self._renderer is None:
+            return
+        
+        bounds = self._get_pet_bounds(center)
+        x1, y1, x2, y2 = bounds
+        
+        breath_intensity = self._get_breath_intensity()
+        glow_layers = 3
+        
+        for i in range(glow_layers):
+            offset = int((glow_layers - i) * 3 * breath_intensity)
+            width = 1 + i
+            
+            if i % 2 == 0:
+                color = self.NEON_PRIMARY_COLOR
+            else:
+                color = self.NEON_SECONDARY_COLOR
+            
+            if self._state == PetState.HAPPY:
+                color = CyberpunkTheme.NEON_YELLOW if i % 2 == 0 else CyberpunkTheme.NEON_PINK
+            elif self._state == PetState.SLEEP:
+                color = CyberpunkTheme.ELECTRIC_BLUE if i % 2 == 0 else CyberpunkTheme.GLITCH_PURPLE
+            elif self._state == PetState.WALK:
+                color = CyberpunkTheme.CYBER_GREEN if i % 2 == 0 else CyberpunkTheme.ELECTRIC_BLUE
+            elif self._state == PetState.JUMP:
+                color = CyberpunkTheme.NEON_ORANGE if i % 2 == 0 else CyberpunkTheme.NEON_PINK
+            
+            gx1 = x1 - offset
+            gy1 = y1 - offset
+            gx2 = x2 + offset
+            gy2 = y2 + offset
+            
+            self._renderer.draw_oval(gx1, gy1, gx2, gy2, fill="", outline=color, width=width)
+        
+        self._renderer.draw_oval(x1, y1, x2, y2, fill="", outline=CyberpunkTheme.NEON_YELLOW, width=1)
+    
+    def _draw_glitch_effect(self, center: int):
+        if self._renderer is None:
+            return
+        
+        if self._glitch_phase > 0.7:
+            bounds = self._get_pet_bounds(center)
+            x1, y1, x2, y2 = bounds
+            
+            glitch_offset = int(3 * self._glitch_phase)
+            segment_height = (y2 - y1) // 4
+            
+            for i in range(4):
+                if i % 3 == 0:
+                    continue
+                
+                seg_y1 = y1 + i * segment_height
+                seg_y2 = seg_y1 + segment_height
+                
+                if i % 2 == 0:
+                    offset_x = glitch_offset
+                else:
+                    offset_x = -glitch_offset
+                
+                if self._glitch_phase > 0.85:
+                    color = CyberpunkTheme.CYBER_GREEN
+                else:
+                    color = CyberpunkTheme.NEON_PINK
+                
+                self._renderer.draw_line(
+                    x1 + offset_x, seg_y1,
+                    x2 + offset_x, seg_y1,
+                    fill=color, width=1
+                )
+                self._renderer.draw_line(
+                    x1 + offset_x, seg_y2,
+                    x2 + offset_x, seg_y2,
+                    fill=color, width=1
+                )
+    
+    def _draw_pulse_effect(self, center: int):
+        if self._renderer is None or self._pulse_intensity <= 0:
+            return
+        
+        colors = [
+            CyberpunkTheme.NEON_PINK,
+            CyberpunkTheme.ELECTRIC_BLUE,
+            CyberpunkTheme.NEON_YELLOW
+        ]
+        
+        for i, color in enumerate(colors):
+            r = int(self._size * 0.6 * (1 + i * 0.2) * self._pulse_intensity)
+            width = int(3 * self._pulse_intensity)
+            
+            self._renderer.draw_oval(
+                center - r, center - r,
+                center + r, center + r,
+                fill="", outline=color, width=width
+            )
+    
+    def trigger_pulse(self):
+        self._pulse_intensity = 1.0
+    
     def draw(self):
         if self._renderer is None:
             return
         
         self._renderer.clear()
+        self._update_neon_phase()
+        
+        center = self._get_center()
+        
+        self._draw_pulse_effect(center)
+        
         handler = self._state_handlers.get(self._state, self._draw_idle)
-        handler(self._get_center())
+        handler(center)
+        
+        self._draw_neon_outline(center)
+        self._draw_glitch_effect(center)
     
     @abstractmethod
     def _draw_idle(self, center: int):
