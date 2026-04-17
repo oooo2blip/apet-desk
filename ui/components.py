@@ -8,7 +8,8 @@ from core.config import (
     UIConfig,
     PetDisplayNames,
     ColorPalette,
-    CyberpunkTheme
+    CyberpunkTheme,
+    MinimalTheme
 )
 from pets.factory import PetFactory, SkinManager
 import random
@@ -247,8 +248,6 @@ class SpeechBubble:
         ]
     }
     
-    TRANSPARENT_COLOR = "#00FF00"
-    
     def __init__(
         self, 
         root: tk.Tk, 
@@ -272,26 +271,26 @@ class SpeechBubble:
         self._bubble_window = tk.Toplevel(self._root)
         self._bubble_window.overrideredirect(True)
         self._bubble_window.attributes("-topmost", True)
-        self._bubble_window.attributes("-transparentcolor", self.TRANSPARENT_COLOR)
+        self._bubble_window.attributes("-transparentcolor", MinimalTheme.TRANSPARENT_MASK)
         self._bubble_window.withdraw()
         
         self._canvas = tk.Canvas(
             self._bubble_window,
             width=300,
             height=150,
-            bg=self.TRANSPARENT_COLOR,
+            bg=MinimalTheme.TRANSPARENT_MASK,
             highlightthickness=0
         )
         self._canvas.pack(fill=tk.BOTH, expand=True)
     
     def _calculate_bubble_size(self, text: str) -> Tuple[int, int]:
-        padding_x = 20
-        padding_y = 15
+        padding_x = 16
+        padding_y = 12
         min_width = 100
-        min_height = 50
+        min_height = 44
         
         text_width = len(text) * 12 + padding_x * 2
-        text_height = 40 + padding_y
+        text_height = 36 + padding_y
         
         bubble_width = max(min_width, text_width)
         bubble_height = max(min_height, text_height)
@@ -306,30 +305,20 @@ class SpeechBubble:
             pet_y = self._root.winfo_y()
         
         bubble_x = pet_x + (self._pet_size - bubble_width) // 2
-        bubble_y = pet_y - bubble_height - 10
+        bubble_y = pet_y - bubble_height - 12
         
         screen_width = self._root.winfo_screenwidth()
         screen_height = self._root.winfo_screenheight()
         
-        if bubble_x < 10:
-            bubble_x = 10
-        elif bubble_x + bubble_width > screen_width - 10:
-            bubble_x = screen_width - bubble_width - 10
+        if bubble_x < 16:
+            bubble_x = 16
+        elif bubble_x + bubble_width > screen_width - 16:
+            bubble_x = screen_width - bubble_width - 16
         
-        if bubble_y < 10:
-            bubble_y = pet_y + self._pet_size + 10
+        if bubble_y < 16:
+            bubble_y = pet_y + self._pet_size + 12
         
         return bubble_x, bubble_y
-    
-    def _get_neon_colors_by_emotion(self, emotion: str) -> Tuple[str, str]:
-        color_map = {
-            "happy": (CyberpunkTheme.SOFT_AMBER, CyberpunkTheme.SOFT_MAUVE),
-            "surprised": (CyberpunkTheme.SOFT_CYAN, CyberpunkTheme.SOFT_LAVENDER),
-            "tired": (CyberpunkTheme.SOFT_LAVENDER, CyberpunkTheme.SOFT_MINT),
-            "curious": (CyberpunkTheme.SOFT_SAGE, CyberpunkTheme.SOFT_CYAN),
-            "playful": (CyberpunkTheme.SOFT_PEACH, CyberpunkTheme.SOFT_MAUVE)
-        }
-        return color_map.get(emotion, (CyberpunkTheme.PRIMARY_GLOW, CyberpunkTheme.SECONDARY_GLOW))
     
     def _draw_bubble(self, text: str, emotion: str):
         if self._canvas is None:
@@ -346,53 +335,95 @@ class SpeechBubble:
         bubble_x2 = center_x + bubble_width // 2
         bubble_y2 = center_y + bubble_height // 2
         
-        primary_neon, secondary_neon = self._get_neon_colors_by_emotion(emotion)
+        radius = 8
         
-        tech_bg = CyberpunkTheme.BUBBLE_BG
-        self._canvas.create_oval(
-            bubble_x1 + 1, bubble_y1 + 1, bubble_x2 - 1, bubble_y2 - 1,
-            fill=tech_bg, outline=""
+        self._canvas.create_rectangle(
+            bubble_x1 + radius, bubble_y1,
+            bubble_x2 - radius, bubble_y2,
+            fill=MinimalTheme.BG_LIGHT, outline=""
+        )
+        self._canvas.create_rectangle(
+            bubble_x1, bubble_y1 + radius,
+            bubble_x2, bubble_y2 - radius,
+            fill=MinimalTheme.BG_LIGHT, outline=""
         )
         
-        glow_layers = 2
-        for i in range(glow_layers):
-            offset = (glow_layers - i) * 1
-            width = 1
-            
-            if i % 2 == 0:
-                glow_color = primary_neon
-            else:
-                glow_color = secondary_neon
-            
-            self._canvas.create_oval(
-                bubble_x1 - offset, bubble_y1 - offset,
-                bubble_x2 + offset, bubble_y2 + offset,
-                outline=glow_color,
-                width=width
-            )
-        
-        self._canvas.create_oval(
-            bubble_x1, bubble_y1, bubble_x2, bubble_y2,
-            outline=CyberpunkTheme.BUBBLE_BORDER, width=1
+        self._canvas.create_arc(
+            bubble_x1, bubble_y1,
+            bubble_x1 + radius * 2, bubble_y1 + radius * 2,
+            start=90, extent=90,
+            fill=MinimalTheme.BG_LIGHT, outline=""
+        )
+        self._canvas.create_arc(
+            bubble_x2 - radius * 2, bubble_y1,
+            bubble_x2, bubble_y1 + radius * 2,
+            start=0, extent=90,
+            fill=MinimalTheme.BG_LIGHT, outline=""
+        )
+        self._canvas.create_arc(
+            bubble_x1, bubble_y2 - radius * 2,
+            bubble_x1 + radius * 2, bubble_y2,
+            start=180, extent=90,
+            fill=MinimalTheme.BG_LIGHT, outline=""
+        )
+        self._canvas.create_arc(
+            bubble_x2 - radius * 2, bubble_y2 - radius * 2,
+            bubble_x2, bubble_y2,
+            start=270, extent=90,
+            fill=MinimalTheme.BG_LIGHT, outline=""
         )
         
-        tail_x = center_x
-        tail_y1 = bubble_y2
-        tail_y2 = bubble_y2 + 20
-        tail_offset = 12
+        self._canvas.create_arc(
+            bubble_x1, bubble_y1,
+            bubble_x1 + radius * 2, bubble_y1 + radius * 2,
+            start=90, extent=90,
+            fill="", outline=MinimalTheme.BORDER_LIGHT, width=1
+        )
+        self._canvas.create_arc(
+            bubble_x2 - radius * 2, bubble_y1,
+            bubble_x2, bubble_y1 + radius * 2,
+            start=0, extent=90,
+            fill="", outline=MinimalTheme.BORDER_LIGHT, width=1
+        )
+        self._canvas.create_arc(
+            bubble_x1, bubble_y2 - radius * 2,
+            bubble_x1 + radius * 2, bubble_y2,
+            start=180, extent=90,
+            fill="", outline=MinimalTheme.BORDER_LIGHT, width=1
+        )
+        self._canvas.create_arc(
+            bubble_x2 - radius * 2, bubble_y2 - radius * 2,
+            bubble_x2, bubble_y2,
+            start=270, extent=90,
+            fill="", outline=MinimalTheme.BORDER_LIGHT, width=1
+        )
         
-        self._canvas.create_polygon(
-            tail_x - tail_offset, tail_y1,
-            tail_x + tail_offset, tail_y1,
-            tail_x, tail_y2,
-            fill=tech_bg, outline=CyberpunkTheme.BUBBLE_BORDER, width=1
+        self._canvas.create_line(
+            bubble_x1 + radius, bubble_y1,
+            bubble_x2 - radius, bubble_y1,
+            fill=MinimalTheme.BORDER_LIGHT, width=1
+        )
+        self._canvas.create_line(
+            bubble_x1 + radius, bubble_y2,
+            bubble_x2 - radius, bubble_y2,
+            fill=MinimalTheme.BORDER_LIGHT, width=1
+        )
+        self._canvas.create_line(
+            bubble_x1, bubble_y1 + radius,
+            bubble_x1, bubble_y2 - radius,
+            fill=MinimalTheme.BORDER_LIGHT, width=1
+        )
+        self._canvas.create_line(
+            bubble_x2, bubble_y1 + radius,
+            bubble_x2, bubble_y2 - radius,
+            fill=MinimalTheme.BORDER_LIGHT, width=1
         )
         
         self._canvas.create_text(
             center_x, center_y,
             text=text,
-            font=("Microsoft YaHei", 11),
-            fill=CyberpunkTheme.BUBBLE_TEXT
+            font=("Microsoft YaHei UI", 11),
+            fill=MinimalTheme.TEXT_PRIMARY
         )
     
     def show(self, text: str, duration: int = 3000, emotion: str = "happy"):
@@ -736,7 +767,7 @@ class PetStatusPanel:
         self._panel_window = tk.Toplevel(self._root)
         self._panel_window.overrideredirect(True)
         self._panel_window.attributes("-topmost", True)
-        self._panel_window.attributes("-transparentcolor", CyberpunkTheme.BUBBLE_BG)
+        self._panel_window.attributes("-transparentcolor", MinimalTheme.TRANSPARENT_MASK)
         self._panel_window.withdraw()
         
         self._create_widgets()
@@ -747,148 +778,212 @@ class PetStatusPanel:
         
         main_frame = tk.Frame(
             self._panel_window,
-            bg=CyberpunkTheme.BUBBLE_BG,
-            padx=10,
-            pady=10
+            bg=MinimalTheme.BG_LIGHT,
+            padx=16,
+            pady=16
         )
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         title_label = tk.Label(
             main_frame,
             text="宠物状态",
-            font=("Microsoft YaHei", 12, "bold"),
-            fg=CyberpunkTheme.SOFT_CYAN,
-            bg=CyberpunkTheme.BUBBLE_BG
+            font=("Microsoft YaHei UI", 14, "bold"),
+            fg=MinimalTheme.TEXT_PRIMARY,
+            bg=MinimalTheme.BG_LIGHT
         )
-        title_label.pack(pady=(0, 10))
+        title_label.pack(pady=(0, 16), anchor=tk.W)
         
-        status_frame = tk.Frame(main_frame, bg=CyberpunkTheme.BUBBLE_BG)
-        status_frame.pack(fill=tk.X, pady=5)
+        divider = tk.Frame(
+            main_frame,
+            bg=MinimalTheme.BORDER_LIGHT,
+            height=1
+        )
+        divider.pack(fill=tk.X, pady=(0, 16))
         
-        self._create_status_bar(status_frame, "mood", "心情", CyberpunkTheme.SOFT_PEACH, 0)
-        self._create_status_bar(status_frame, "hunger", "饥饿", CyberpunkTheme.SOFT_AMBER, 1)
-        self._create_status_bar(status_frame, "energy", "能量", CyberpunkTheme.SOFT_MINT, 2)
-        self._create_status_bar(status_frame, "affection", "亲密度", CyberpunkTheme.SOFT_LAVENDER, 3)
+        status_frame = tk.Frame(main_frame, bg=MinimalTheme.BG_LIGHT)
+        status_frame.pack(fill=tk.X, pady=4)
         
-        info_frame = tk.Frame(main_frame, bg=CyberpunkTheme.BUBBLE_BG)
-        info_frame.pack(fill=tk.X, pady=5)
+        self._create_status_bar(status_frame, "mood", "心情", 0)
+        self._create_status_bar(status_frame, "hunger", "饥饿", 1)
+        self._create_status_bar(status_frame, "energy", "能量", 2)
+        self._create_status_bar(status_frame, "affection", "亲密度", 3)
+        
+        info_frame = tk.Frame(main_frame, bg=MinimalTheme.BG_LIGHT)
+        info_frame.pack(fill=tk.X, pady=12)
+        
+        level_frame = tk.Frame(info_frame, bg=MinimalTheme.BG_MEDIUM, padx=12, pady=8)
+        level_frame.pack(side=tk.LEFT, padx=(0, 8), fill=tk.X, expand=True)
+        
+        level_title = tk.Label(
+            level_frame,
+            text="等级",
+            font=("Microsoft YaHei UI", 9),
+            fg=MinimalTheme.TEXT_SECONDARY,
+            bg=MinimalTheme.BG_MEDIUM
+        )
+        level_title.pack(anchor=tk.W)
         
         level_label = tk.Label(
-            info_frame,
-            text="等级: 1",
-            font=("Microsoft YaHei", 10),
-            fg=CyberpunkTheme.SOFT_MAUVE,
-            bg=CyberpunkTheme.BUBBLE_BG
+            level_frame,
+            text="1",
+            font=("Microsoft YaHei UI", 18, "bold"),
+            fg=MinimalTheme.ACCENT_PRIMARY,
+            bg=MinimalTheme.BG_MEDIUM
         )
-        level_label.pack(side=tk.LEFT, padx=5)
+        level_label.pack(anchor=tk.W)
         self._status_labels["level"] = level_label
         
-        exp_label = tk.Label(
-            info_frame,
-            text="经验: 0/100",
-            font=("Microsoft YaHei", 10),
-            fg=CyberpunkTheme.SOFT_SAGE,
-            bg=CyberpunkTheme.BUBBLE_BG
+        exp_frame = tk.Frame(info_frame, bg=MinimalTheme.BG_MEDIUM, padx=12, pady=8)
+        exp_frame.pack(side=tk.LEFT, padx=(8, 0), fill=tk.X, expand=True)
+        
+        exp_title = tk.Label(
+            exp_frame,
+            text="经验",
+            font=("Microsoft YaHei UI", 9),
+            fg=MinimalTheme.TEXT_SECONDARY,
+            bg=MinimalTheme.BG_MEDIUM
         )
-        exp_label.pack(side=tk.LEFT, padx=5)
+        exp_title.pack(anchor=tk.W)
+        
+        exp_label = tk.Label(
+            exp_frame,
+            text="0/100",
+            font=("Microsoft YaHei UI", 18, "bold"),
+            fg=MinimalTheme.TEXT_PRIMARY,
+            bg=MinimalTheme.BG_MEDIUM
+        )
+        exp_label.pack(anchor=tk.W)
         self._status_labels["experience"] = exp_label
         
-        button_frame = tk.Frame(main_frame, bg=CyberpunkTheme.BUBBLE_BG)
-        button_frame.pack(fill=tk.X, pady=10)
+        button_divider = tk.Frame(
+            main_frame,
+            bg=MinimalTheme.BORDER_LIGHT,
+            height=1
+        )
+        button_divider.pack(fill=tk.X, pady=16)
+        
+        action_label = tk.Label(
+            main_frame,
+            text="快捷操作",
+            font=("Microsoft YaHei UI", 11, "bold"),
+            fg=MinimalTheme.TEXT_PRIMARY,
+            bg=MinimalTheme.BG_LIGHT
+        )
+        action_label.pack(pady=(0, 12), anchor=tk.W)
+        
+        button_frame = tk.Frame(main_frame, bg=MinimalTheme.BG_LIGHT)
+        button_frame.pack(fill=tk.X)
         
         feed_btn = tk.Button(
             button_frame,
             text="喂食",
-            font=("Microsoft YaHei", 9),
-            fg=CyberpunkTheme.BUBBLE_TEXT,
-            bg=CyberpunkTheme.SOFT_AMBER,
-            activebackground=CyberpunkTheme.SOFT_CYAN,
+            font=("Microsoft YaHei UI", 10),
+            fg=MinimalTheme.TEXT_PRIMARY,
+            bg=MinimalTheme.BG_MEDIUM,
+            activebackground=MinimalTheme.BG_DARK,
+            activeforeground=MinimalTheme.TEXT_PRIMARY,
             relief=tk.FLAT,
-            padx=15,
-            pady=5,
+            padx=0,
+            pady=10,
+            cursor="hand2",
             command=self._handle_feed
         )
-        feed_btn.pack(side=tk.LEFT, padx=5)
+        feed_btn.pack(side=tk.LEFT, padx=(0, 8), fill=tk.X, expand=True)
         
         pet_btn = tk.Button(
             button_frame,
             text="抚摸",
-            font=("Microsoft YaHei", 9),
-            fg=CyberpunkTheme.BUBBLE_TEXT,
-            bg=CyberpunkTheme.SOFT_PEACH,
-            activebackground=CyberpunkTheme.SOFT_CYAN,
+            font=("Microsoft YaHei UI", 10),
+            fg=MinimalTheme.TEXT_PRIMARY,
+            bg=MinimalTheme.BG_MEDIUM,
+            activebackground=MinimalTheme.BG_DARK,
+            activeforeground=MinimalTheme.TEXT_PRIMARY,
             relief=tk.FLAT,
-            padx=15,
-            pady=5,
+            padx=0,
+            pady=10,
+            cursor="hand2",
             command=self._handle_pet
         )
-        pet_btn.pack(side=tk.LEFT, padx=5)
+        pet_btn.pack(side=tk.LEFT, padx=(4, 4), fill=tk.X, expand=True)
         
         rest_btn = tk.Button(
             button_frame,
             text="休息",
-            font=("Microsoft YaHei", 9),
-            fg=CyberpunkTheme.BUBBLE_TEXT,
-            bg=CyberpunkTheme.SOFT_MINT,
-            activebackground=CyberpunkTheme.SOFT_CYAN,
+            font=("Microsoft YaHei UI", 10),
+            fg=MinimalTheme.TEXT_PRIMARY,
+            bg=MinimalTheme.BG_MEDIUM,
+            activebackground=MinimalTheme.BG_DARK,
+            activeforeground=MinimalTheme.TEXT_PRIMARY,
             relief=tk.FLAT,
-            padx=15,
-            pady=5,
+            padx=0,
+            pady=10,
+            cursor="hand2",
             command=self._handle_rest
         )
-        rest_btn.pack(side=tk.LEFT, padx=5)
+        rest_btn.pack(side=tk.LEFT, padx=(8, 0), fill=tk.X, expand=True)
+        
+        close_divider = tk.Frame(
+            main_frame,
+            bg=MinimalTheme.BORDER_LIGHT,
+            height=1
+        )
+        close_divider.pack(fill=tk.X, pady=16)
         
         close_btn = tk.Button(
             main_frame,
             text="关闭",
-            font=("Microsoft YaHei", 9),
-            fg=CyberpunkTheme.BUBBLE_TEXT,
-            bg=CyberpunkTheme.SOFT_LAVENDER,
-            activebackground=CyberpunkTheme.SOFT_CYAN,
+            font=("Microsoft YaHei UI", 10),
+            fg=MinimalTheme.TEXT_SECONDARY,
+            bg=MinimalTheme.BG_LIGHT,
+            activebackground=MinimalTheme.BG_MEDIUM,
+            activeforeground=MinimalTheme.TEXT_PRIMARY,
             relief=tk.FLAT,
-            padx=20,
-            pady=5,
+            padx=0,
+            pady=8,
+            cursor="hand2",
             command=self.hide
         )
-        close_btn.pack(pady=5)
+        close_btn.pack(fill=tk.X)
     
-    def _create_status_bar(self, parent, key: str, label: str, color: str, row: int):
-        frame = tk.Frame(parent, bg=CyberpunkTheme.BUBBLE_BG)
-        frame.grid(row=row, column=0, sticky=tk.W, pady=2)
+    def _create_status_bar(self, parent, key: str, label: str, row: int):
+        frame = tk.Frame(parent, bg=MinimalTheme.BG_LIGHT)
+        frame.grid(row=row, column=0, sticky=tk.EW, pady=6)
         
         label_widget = tk.Label(
             frame,
-            text=f"{label}:",
-            font=("Microsoft YaHei", 9),
-            fg=color,
-            bg=CyberpunkTheme.BUBBLE_BG,
-            width=8,
+            text=label,
+            font=("Microsoft YaHei UI", 10),
+            fg=MinimalTheme.TEXT_SECONDARY,
+            bg=MinimalTheme.BG_LIGHT,
+            width=6,
             anchor=tk.W
         )
-        label_widget.pack(side=tk.LEFT)
+        label_widget.pack(side=tk.LEFT, padx=(0, 8))
         
         canvas = tk.Canvas(
             frame,
-            width=150,
-            height=15,
-            bg=CyberpunkTheme.BUBBLE_BG,
+            width=140,
+            height=8,
+            bg=MinimalTheme.BG_LIGHT,
             highlightthickness=0
         )
-        canvas.pack(side=tk.LEFT, padx=5)
+        canvas.pack(side=tk.LEFT, padx=8)
         
         value_label = tk.Label(
             frame,
-            text="0/100",
-            font=("Microsoft YaHei", 9),
-            fg=color,
-            bg=CyberpunkTheme.BUBBLE_BG,
-            width=8,
-            anchor=tk.W
+            text="0",
+            font=("Microsoft YaHei UI", 10),
+            fg=MinimalTheme.TEXT_PRIMARY,
+            bg=MinimalTheme.BG_LIGHT,
+            width=4,
+            anchor=tk.E
         )
-        value_label.pack(side=tk.LEFT)
+        value_label.pack(side=tk.LEFT, padx=(8, 0))
         
         self._status_bars[key] = canvas
         self._status_labels[key] = value_label
+        
+        parent.grid_columnconfigure(0, weight=1)
     
     def _update_status_bars(self):
         if not self._is_visible or self._get_nurture_data is None:
@@ -905,49 +1000,40 @@ class PetStatusPanel:
             "affection": 1000
         }
         
-        colors = {
-            "mood": CyberpunkTheme.SOFT_PEACH,
-            "hunger": CyberpunkTheme.SOFT_AMBER,
-            "energy": CyberpunkTheme.SOFT_MINT,
-            "affection": CyberpunkTheme.SOFT_LAVENDER
-        }
-        
         for key in ["mood", "hunger", "energy", "affection"]:
             if key in data and key in self._status_bars and key in self._status_labels:
                 value = data[key]
                 max_val = max_values.get(key, 100)
-                color = colors.get(key, CyberpunkTheme.SOFT_CYAN)
                 
-                self._status_labels[key].config(text=f"{value}/{max_val}")
+                self._status_labels[key].config(text=str(value))
                 
                 canvas = self._status_bars[key]
                 canvas.delete("all")
                 
-                bar_width = 150
-                bar_height = 12
+                bar_width = 140
+                bar_height = 8
                 fill_width = int((value / max_val) * bar_width)
                 
                 canvas.create_rectangle(
                     0, 0, bar_width, bar_height,
-                    fill=CyberpunkTheme.BUBBLE_BG,
-                    outline=color,
-                    width=1
+                    fill=MinimalTheme.BG_DARK,
+                    outline=""
                 )
                 
                 if fill_width > 0:
                     canvas.create_rectangle(
-                        1, 1, fill_width - 1, bar_height - 1,
-                        fill=color,
+                        0, 0, fill_width, bar_height,
+                        fill=MinimalTheme.ACCENT_PRIMARY,
                         outline=""
                     )
         
         if "level" in data and "level" in self._status_labels:
-            self._status_labels["level"].config(text=f"等级: {data['level']}")
+            self._status_labels["level"].config(text=str(data["level"]))
         
         if "experience" in data and "experience" in self._status_labels:
             exp_per_level = 100
             exp = data["experience"]
-            self._status_labels["experience"].config(text=f"经验: {exp}/{exp_per_level}")
+            self._status_labels["experience"].config(text=f"{exp}/{exp_per_level}")
     
     def _calculate_position(self) -> Tuple[int, int]:
         if self._get_pet_position is not None:
@@ -956,26 +1042,26 @@ class PetStatusPanel:
             pet_x = self._root.winfo_x()
             pet_y = self._root.winfo_y()
         
-        panel_x = pet_x + self._pet_size + 10
+        panel_x = pet_x + self._pet_size + 12
         panel_y = pet_y
         
         screen_width = self._root.winfo_screenwidth()
         screen_height = self._root.winfo_screenheight()
         
-        panel_width = 280
-        panel_height = 350
+        panel_width = 260
+        panel_height = 420
         
-        if panel_x + panel_width > screen_width - 10:
-            panel_x = pet_x - panel_width - 10
+        if panel_x + panel_width > screen_width - 20:
+            panel_x = pet_x - panel_width - 12
         
-        if panel_x < 10:
-            panel_x = 10
+        if panel_x < 20:
+            panel_x = 20
         
-        if panel_y + panel_height > screen_height - 10:
-            panel_y = screen_height - panel_height - 10
+        if panel_y + panel_height > screen_height - 20:
+            panel_y = screen_height - panel_height - 20
         
-        if panel_y < 10:
-            panel_y = 10
+        if panel_y < 20:
+            panel_y = 20
         
         return panel_x, panel_y
     
@@ -1000,8 +1086,8 @@ class PetStatusPanel:
         if self._panel_window is None:
             return
         
-        panel_width = 280
-        panel_height = 350
+        panel_width = 260
+        panel_height = 420
         
         self._panel_window.geometry(f"{panel_width}x{panel_height}")
         
