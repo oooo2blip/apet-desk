@@ -53,6 +53,29 @@ class CyberpunkTheme:
     ]
 
 
+class MinimalTheme:
+    BG_LIGHT = "#FAFAFA"
+    BG_MEDIUM = "#F0F0F0"
+    BG_DARK = "#E0E0E0"
+    
+    TEXT_PRIMARY = "#333333"
+    TEXT_SECONDARY = "#666666"
+    TEXT_DISABLED = "#999999"
+    
+    BORDER_LIGHT = "#E8E8E8"
+    BORDER_MEDIUM = "#D0D0D0"
+    
+    ACCENT_PRIMARY = "#4A90D9"
+    ACCENT_HOVER = "#357ABD"
+    ACCENT_LIGHT = "#E8F4FD"
+    
+    SUCCESS = "#5DB075"
+    WARNING = "#F5A623"
+    ERROR = "#E74C3C"
+    
+    TRANSPARENT_MASK = "#FFFFFF"
+
+
 class PetState(Enum):
     IDLE = "idle"
     WALK = "walk"
