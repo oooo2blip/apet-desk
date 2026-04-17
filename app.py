@@ -139,8 +139,16 @@ class PetApplication:
             self._on_autostart_toggle
         )
         
-        self._speech_bubble = SpeechBubble(self._canvas, self._pet_size)
-        self._emotion_display = EmotionDisplay(self._canvas, self._pet_size)
+        self._speech_bubble = SpeechBubble(
+            self._root,
+            self._pet_size,
+            self._get_pet_position
+        )
+        self._emotion_display = EmotionDisplay(
+            self._root,
+            self._pet_size,
+            self._get_pet_position
+        )
     
     def _bind_click_event(self):
         self._canvas.bind("<Button-1>", self._on_click, add="+")
@@ -255,6 +263,9 @@ class PetApplication:
     
     def _get_pet_size(self) -> int:
         return self._pet_size
+    
+    def _get_pet_position(self) -> Tuple[int, int]:
+        return (self._x, self._y)
     
     def run(self):
         self._root.mainloop()
