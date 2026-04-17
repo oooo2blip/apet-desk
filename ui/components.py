@@ -735,6 +735,8 @@ class EmotionDisplay:
 
 
 class PetStatusPanel:
+    COOLDOWN_DURATION = 1000
+    
     def __init__(
         self,
         root: tk.Tk,
@@ -759,6 +761,15 @@ class PetStatusPanel:
         
         self._status_labels: Dict[str, tk.Label] = {}
         self._status_bars: Dict[str, tk.Canvas] = {}
+        self._action_buttons: Dict[str, tk.Button] = {}
+        
+        self._is_on_cooldown: bool = False
+        self._cooldown_timer: Optional[str] = None
+        self._cooldown_start_time: int = 0
+        
+        self._is_dragging: bool = False
+        self._drag_offset_x: int = 0
+        self._drag_offset_y: int = 0
     
     def _create_panel_window(self):
         if self._panel_window is not None:
@@ -789,9 +800,18 @@ class PetStatusPanel:
             text="宠物状态",
             font=("Microsoft YaHei UI", 14, "bold"),
             fg=MinimalTheme.TEXT_PRIMARY,
-            bg=MinimalTheme.BG_LIGHT
+            bg=MinimalTheme.BG_LIGHT,
+            cursor="fleur"
         )
         title_label.pack(pady=(0, 16), anchor=tk.W)
+        
+        title_label.bind("<Button-1>", self._on_drag_start)
+        title_label.bind("<B1-Motion>", self._on_drag)
+        title_label.bind("<ButtonRelease-1>", self._on_drag_end)
+        
+        main_frame.bind("<Button-1>", self._on_drag_start)
+        main_frame.bind("<B1-Motion>", self._on_drag)
+        main_frame.bind("<ButtonRelease-1>", self._on_drag_end)
         
         divider = tk.Frame(
             main_frame,
@@ -874,53 +894,29 @@ class PetStatusPanel:
         button_frame = tk.Frame(main_frame, bg=MinimalTheme.BG_LIGHT)
         button_frame.pack(fill=tk.X)
         
-        feed_btn = tk.Button(
+        feed_btn = self._create_action_button(
             button_frame,
-            text="喂食",
-            font=("Microsoft YaHei UI", 10),
-            fg=MinimalTheme.TEXT_PRIMARY,
-            bg=MinimalTheme.BG_MEDIUM,
-            activebackground=MinimalTheme.BG_DARK,
-            activeforeground=MinimalTheme.TEXT_PRIMARY,
-            relief=tk.FLAT,
-            padx=0,
-            pady=10,
-            cursor="hand2",
-            command=self._handle_feed
+            "喂食",
+            self._handle_feed
         )
         feed_btn.pack(side=tk.LEFT, padx=(0, 8), fill=tk.X, expand=True)
+        self._action_buttons["feed"] = feed_btn
         
-        pet_btn = tk.Button(
+        pet_btn = self._create_action_button(
             button_frame,
-            text="抚摸",
-            font=("Microsoft YaHei UI", 10),
-            fg=MinimalTheme.TEXT_PRIMARY,
-            bg=MinimalTheme.BG_MEDIUM,
-            activebackground=MinimalTheme.BG_DARK,
-            activeforeground=MinimalTheme.TEXT_PRIMARY,
-            relief=tk.FLAT,
-            padx=0,
-            pady=10,
-            cursor="hand2",
-            command=self._handle_pet
+            "抚摸",
+            self._handle_pet
         )
         pet_btn.pack(side=tk.LEFT, padx=(4, 4), fill=tk.X, expand=True)
+        self._action_buttons["pet"] = pet_btn
         
-        rest_btn = tk.Button(
+        rest_btn = self._create_action_button(
             button_frame,
-            text="休息",
-            font=("Microsoft YaHei UI", 10),
-            fg=MinimalTheme.TEXT_PRIMARY,
-            bg=MinimalTheme.BG_MEDIUM,
-            activebackground=MinimalTheme.BG_DARK,
-            activeforeground=MinimalTheme.TEXT_PRIMARY,
-            relief=tk.FLAT,
-            padx=0,
-            pady=10,
-            cursor="hand2",
-            command=self._handle_rest
+            "休息",
+            self._handle_rest
         )
         rest_btn.pack(side=tk.LEFT, padx=(8, 0), fill=tk.X, expand=True)
+        self._action_buttons["rest"] = rest_btn
         
         close_divider = tk.Frame(
             main_frame,
@@ -985,6 +981,16 @@ class PetStatusPanel:
         
         parent.grid_columnconfigure(0, weight=1)
     
+    def _get_status_color(self, value: int, max_value: int) -> str:
+        percentage = value / max_value
+        
+        if percentage <= 0.2:
+            return MinimalTheme.ERROR
+        elif percentage <= 0.4:
+            return MinimalTheme.WARNING
+        else:
+            return MinimalTheme.ACCENT_PRIMARY
+    
     def _update_status_bars(self):
         if not self._is_visible or self._get_nurture_data is None:
             return
@@ -1005,7 +1011,9 @@ class PetStatusPanel:
                 value = data[key]
                 max_val = max_values.get(key, 100)
                 
-                self._status_labels[key].config(text=str(value))
+                status_color = self._get_status_color(value, max_val)
+                
+                self._status_labels[key].config(text=str(value), fg=status_color)
                 
                 canvas = self._status_bars[key]
                 canvas.delete("all")
@@ -1023,7 +1031,7 @@ class PetStatusPanel:
                 if fill_width > 0:
                     canvas.create_rectangle(
                         0, 0, fill_width, bar_height,
-                        fill=MinimalTheme.ACCENT_PRIMARY,
+                        fill=status_color,
                         outline=""
                     )
         
@@ -1065,17 +1073,157 @@ class PetStatusPanel:
         
         return panel_x, panel_y
     
+    def _on_drag_start(self, event: tk.Event):
+        self._is_dragging = True
+        self._drag_offset_x = event.x_root - self._panel_window.winfo_x()
+        self._drag_offset_y = event.y_root - self._panel_window.winfo_y()
+    
+    def _on_drag(self, event: tk.Event):
+        if not self._is_dragging:
+            return
+        
+        new_x = event.x_root - self._drag_offset_x
+        new_y = event.y_root - self._drag_offset_y
+        
+        self._panel_window.geometry(f"+{new_x}+{new_y}")
+    
+    def _on_drag_end(self, event: tk.Event):
+        self._is_dragging = False
+    
+    def _create_action_button(
+        self,
+        parent,
+        text: str,
+        command
+    ) -> tk.Button:
+        btn = tk.Button(
+            parent,
+            text=text,
+            font=("Microsoft YaHei UI", 10),
+            fg=MinimalTheme.TEXT_PRIMARY,
+            bg=MinimalTheme.BG_MEDIUM,
+            activebackground=MinimalTheme.ACCENT_LIGHT,
+            activeforeground=MinimalTheme.ACCENT_PRIMARY,
+            relief=tk.FLAT,
+            padx=0,
+            pady=10,
+            cursor="hand2",
+            command=command
+        )
+        
+        btn.bind("<Enter>", lambda e: self._on_button_enter(btn))
+        btn.bind("<Leave>", lambda e: self._on_button_leave(btn))
+        btn.bind("<Button-1>", lambda e: self._on_button_press(btn))
+        btn.bind("<ButtonRelease-1>", lambda e: self._on_button_release(btn))
+        
+        return btn
+    
+    def _on_button_enter(self, btn: tk.Button):
+        try:
+            if btn.cget("state") != tk.DISABLED:
+                btn.config(
+                    bg=MinimalTheme.ACCENT_LIGHT,
+                    fg=MinimalTheme.ACCENT_PRIMARY
+                )
+        except Exception:
+            pass
+    
+    def _on_button_leave(self, btn: tk.Button):
+        try:
+            if btn.cget("state") != tk.DISABLED:
+                btn.config(
+                    bg=MinimalTheme.BG_MEDIUM,
+                    fg=MinimalTheme.TEXT_PRIMARY
+                )
+        except Exception:
+            pass
+    
+    def _on_button_press(self, btn: tk.Button):
+        try:
+            if btn.cget("state") != tk.DISABLED:
+                btn.config(
+                    bg=MinimalTheme.ACCENT_PRIMARY,
+                    fg=MinimalTheme.BG_LIGHT
+                )
+        except Exception:
+            pass
+    
+    def _on_button_release(self, btn: tk.Button):
+        try:
+            if btn.cget("state") != tk.DISABLED:
+                btn.config(
+                    bg=MinimalTheme.ACCENT_LIGHT,
+                    fg=MinimalTheme.ACCENT_PRIMARY
+                )
+        except Exception:
+            pass
+    
+    def _set_cooldown(self):
+        if self._is_on_cooldown:
+            return
+        
+        self._is_on_cooldown = True
+        self._set_buttons_enabled(False)
+        
+        if self._cooldown_timer is not None:
+            try:
+                self._root.after_cancel(self._cooldown_timer)
+            except Exception:
+                pass
+        
+        self._cooldown_timer = self._root.after(
+            self.COOLDOWN_DURATION,
+            self._reset_cooldown
+        )
+    
+    def _reset_cooldown(self):
+        self._is_on_cooldown = False
+        self._cooldown_timer = None
+        self._set_buttons_enabled(True)
+    
+    def _set_buttons_enabled(self, enabled: bool):
+        for btn in self._action_buttons.values():
+            try:
+                if enabled:
+                    btn.config(
+                        state=tk.NORMAL,
+                        bg=MinimalTheme.BG_MEDIUM,
+                        fg=MinimalTheme.TEXT_PRIMARY,
+                        cursor="hand2"
+                    )
+                else:
+                    btn.config(
+                        state=tk.DISABLED,
+                        bg=MinimalTheme.BG_DARK,
+                        fg=MinimalTheme.TEXT_DISABLED,
+                        cursor="arrow"
+                    )
+            except Exception:
+                pass
+    
     def _handle_feed(self):
+        if self._is_on_cooldown:
+            return
+        
         if self._on_feed is not None:
             self._on_feed()
+            self._set_cooldown()
     
     def _handle_pet(self):
+        if self._is_on_cooldown:
+            return
+        
         if self._on_pet is not None:
             self._on_pet()
+            self._set_cooldown()
     
     def _handle_rest(self):
+        if self._is_on_cooldown:
+            return
+        
         if self._on_rest is not None:
             self._on_rest()
+            self._set_cooldown()
     
     def show(self):
         if self._is_visible:
