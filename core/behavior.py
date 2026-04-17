@@ -26,7 +26,8 @@ class BehaviorEngine:
             PetState.IDLE,
             PetState.WALK,
             PetState.SLEEP,
-            PetState.HAPPY
+            PetState.HAPPY,
+            PetState.JUMP
         ]
     
     @property
@@ -58,14 +59,33 @@ class BehaviorEngine:
             self._on_state_change(PetState.IDLE)
             self.start()
     
+    def _get_state_duration(self, state: PetState) -> int:
+        if state == PetState.JUMP:
+            return random.randint(
+                AnimationConfig.JUMP_DURATION_MIN,
+                AnimationConfig.JUMP_DURATION_MAX
+            )
+        elif state == PetState.HAPPY:
+            return random.randint(
+                AnimationConfig.HAPPY_DURATION_MIN,
+                AnimationConfig.HAPPY_DURATION_MAX
+            )
+        elif state == PetState.SLEEP:
+            return random.randint(
+                AnimationConfig.SLEEP_DURATION_MIN,
+                AnimationConfig.SLEEP_DURATION_MAX
+            )
+        else:
+            return random.randint(
+                AnimationConfig.IDLE_STATE_DURATION_MIN,
+                AnimationConfig.IDLE_STATE_DURATION_MAX
+            )
+    
     def _schedule_next_behavior(self):
         if not self._is_running:
             return
         
-        duration = random.randint(
-            AnimationConfig.IDLE_STATE_DURATION_MIN,
-            AnimationConfig.IDLE_STATE_DURATION_MAX
-        )
+        duration = self._get_state_duration(self._current_state)
         self._behavior_timer = self._root.after(duration, self._select_next_behavior)
     
     def _select_next_behavior(self):
@@ -92,6 +112,10 @@ class BehaviorEngine:
         elif behavior == PetState.HAPPY:
             self._current_state = PetState.HAPPY
             self._on_state_change(PetState.HAPPY)
+        
+        elif behavior == PetState.JUMP:
+            self._current_state = PetState.JUMP
+            self._on_state_change(PetState.JUMP)
         
         else:
             self._current_state = PetState.IDLE
