@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import Menu, Toplevel, Label, Scale, Button, Checkbutton
-from typing import Optional, Callable, Any, List, Tuple
+from typing import Optional, Callable, Any, List, Tuple, Dict
 import math
 from core.config import (
     PetType,
@@ -78,6 +78,7 @@ class ContextMenu:
         on_pet_change: Callable[[PetType], None],
         on_skin_change: Callable[[SkinColor], None],
         on_settings_open: Callable[[], None],
+        on_status_panel_open: Callable[[], None],
         on_quit: Callable[[], None]
     ):
         self._root = root
@@ -85,6 +86,7 @@ class ContextMenu:
         self._on_pet_change = on_pet_change
         self._on_skin_change = on_skin_change
         self._on_settings_open = on_settings_open
+        self._on_status_panel_open = on_status_panel_open
         self._on_quit = on_quit
         
         self._context_menu = self._create_context_menu()
@@ -112,6 +114,7 @@ class ContextMenu:
         context_menu.add_cascade(label="更换皮肤", menu=skin_menu)
         
         context_menu.add_command(label="设置", command=self._on_settings_open)
+        context_menu.add_command(label="状态面板", command=self._on_status_panel_open)
         context_menu.add_separator()
         context_menu.add_command(label="退出", command=self._on_quit)
         
@@ -698,3 +701,352 @@ class EmotionDisplay:
     @property
     def current_emotion(self) -> Optional[str]:
         return self._current_emotion
+
+
+class PetStatusPanel:
+    def __init__(
+        self,
+        root: tk.Tk,
+        pet_size: int = 100,
+        get_pet_position: Optional[Callable[[], Tuple[int, int]]] = None,
+        on_feed: Optional[Callable[[], None]] = None,
+        on_pet: Optional[Callable[[], None]] = None,
+        on_rest: Optional[Callable[[], None]] = None,
+        get_nurture_data: Optional[Callable[[], Dict[str, Any]]] = None
+    ):
+        self._root = root
+        self._pet_size = pet_size
+        self._get_pet_position = get_pet_position
+        self._on_feed = on_feed
+        self._on_pet = on_pet
+        self._on_rest = on_rest
+        self._get_nurture_data = get_nurture_data
+        
+        self._panel_window: Optional[tk.Toplevel] = None
+        self._is_visible: bool = False
+        self._update_timer: Optional[str] = None
+        
+        self._status_labels: Dict[str, tk.Label] = {}
+        self._status_bars: Dict[str, tk.Canvas] = {}
+    
+    def _create_panel_window(self):
+        if self._panel_window is not None:
+            return
+        
+        self._panel_window = tk.Toplevel(self._root)
+        self._panel_window.overrideredirect(True)
+        self._panel_window.attributes("-topmost", True)
+        self._panel_window.attributes("-transparentcolor", CyberpunkTheme.BUBBLE_BG)
+        self._panel_window.withdraw()
+        
+        self._create_widgets()
+    
+    def _create_widgets(self):
+        if self._panel_window is None:
+            return
+        
+        main_frame = tk.Frame(
+            self._panel_window,
+            bg=CyberpunkTheme.BUBBLE_BG,
+            padx=10,
+            pady=10
+        )
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        title_label = tk.Label(
+            main_frame,
+            text="宠物状态",
+            font=("Microsoft YaHei", 12, "bold"),
+            fg=CyberpunkTheme.SOFT_CYAN,
+            bg=CyberpunkTheme.BUBBLE_BG
+        )
+        title_label.pack(pady=(0, 10))
+        
+        status_frame = tk.Frame(main_frame, bg=CyberpunkTheme.BUBBLE_BG)
+        status_frame.pack(fill=tk.X, pady=5)
+        
+        self._create_status_bar(status_frame, "mood", "心情", CyberpunkTheme.SOFT_PEACH, 0)
+        self._create_status_bar(status_frame, "hunger", "饥饿", CyberpunkTheme.SOFT_AMBER, 1)
+        self._create_status_bar(status_frame, "energy", "能量", CyberpunkTheme.SOFT_MINT, 2)
+        self._create_status_bar(status_frame, "affection", "亲密度", CyberpunkTheme.SOFT_LAVENDER, 3)
+        
+        info_frame = tk.Frame(main_frame, bg=CyberpunkTheme.BUBBLE_BG)
+        info_frame.pack(fill=tk.X, pady=5)
+        
+        level_label = tk.Label(
+            info_frame,
+            text="等级: 1",
+            font=("Microsoft YaHei", 10),
+            fg=CyberpunkTheme.SOFT_MAUVE,
+            bg=CyberpunkTheme.BUBBLE_BG
+        )
+        level_label.pack(side=tk.LEFT, padx=5)
+        self._status_labels["level"] = level_label
+        
+        exp_label = tk.Label(
+            info_frame,
+            text="经验: 0/100",
+            font=("Microsoft YaHei", 10),
+            fg=CyberpunkTheme.SOFT_SAGE,
+            bg=CyberpunkTheme.BUBBLE_BG
+        )
+        exp_label.pack(side=tk.LEFT, padx=5)
+        self._status_labels["experience"] = exp_label
+        
+        button_frame = tk.Frame(main_frame, bg=CyberpunkTheme.BUBBLE_BG)
+        button_frame.pack(fill=tk.X, pady=10)
+        
+        feed_btn = tk.Button(
+            button_frame,
+            text="喂食",
+            font=("Microsoft YaHei", 9),
+            fg=CyberpunkTheme.BUBBLE_TEXT,
+            bg=CyberpunkTheme.SOFT_AMBER,
+            activebackground=CyberpunkTheme.SOFT_CYAN,
+            relief=tk.FLAT,
+            padx=15,
+            pady=5,
+            command=self._handle_feed
+        )
+        feed_btn.pack(side=tk.LEFT, padx=5)
+        
+        pet_btn = tk.Button(
+            button_frame,
+            text="抚摸",
+            font=("Microsoft YaHei", 9),
+            fg=CyberpunkTheme.BUBBLE_TEXT,
+            bg=CyberpunkTheme.SOFT_PEACH,
+            activebackground=CyberpunkTheme.SOFT_CYAN,
+            relief=tk.FLAT,
+            padx=15,
+            pady=5,
+            command=self._handle_pet
+        )
+        pet_btn.pack(side=tk.LEFT, padx=5)
+        
+        rest_btn = tk.Button(
+            button_frame,
+            text="休息",
+            font=("Microsoft YaHei", 9),
+            fg=CyberpunkTheme.BUBBLE_TEXT,
+            bg=CyberpunkTheme.SOFT_MINT,
+            activebackground=CyberpunkTheme.SOFT_CYAN,
+            relief=tk.FLAT,
+            padx=15,
+            pady=5,
+            command=self._handle_rest
+        )
+        rest_btn.pack(side=tk.LEFT, padx=5)
+        
+        close_btn = tk.Button(
+            main_frame,
+            text="关闭",
+            font=("Microsoft YaHei", 9),
+            fg=CyberpunkTheme.BUBBLE_TEXT,
+            bg=CyberpunkTheme.SOFT_LAVENDER,
+            activebackground=CyberpunkTheme.SOFT_CYAN,
+            relief=tk.FLAT,
+            padx=20,
+            pady=5,
+            command=self.hide
+        )
+        close_btn.pack(pady=5)
+    
+    def _create_status_bar(self, parent, key: str, label: str, color: str, row: int):
+        frame = tk.Frame(parent, bg=CyberpunkTheme.BUBBLE_BG)
+        frame.grid(row=row, column=0, sticky=tk.W, pady=2)
+        
+        label_widget = tk.Label(
+            frame,
+            text=f"{label}:",
+            font=("Microsoft YaHei", 9),
+            fg=color,
+            bg=CyberpunkTheme.BUBBLE_BG,
+            width=8,
+            anchor=tk.W
+        )
+        label_widget.pack(side=tk.LEFT)
+        
+        canvas = tk.Canvas(
+            frame,
+            width=150,
+            height=15,
+            bg=CyberpunkTheme.BUBBLE_BG,
+            highlightthickness=0
+        )
+        canvas.pack(side=tk.LEFT, padx=5)
+        
+        value_label = tk.Label(
+            frame,
+            text="0/100",
+            font=("Microsoft YaHei", 9),
+            fg=color,
+            bg=CyberpunkTheme.BUBBLE_BG,
+            width=8,
+            anchor=tk.W
+        )
+        value_label.pack(side=tk.LEFT)
+        
+        self._status_bars[key] = canvas
+        self._status_labels[key] = value_label
+    
+    def _update_status_bars(self):
+        if not self._is_visible or self._get_nurture_data is None:
+            return
+        
+        data = self._get_nurture_data()
+        if not data:
+            return
+        
+        max_values = {
+            "mood": 100,
+            "hunger": 100,
+            "energy": 100,
+            "affection": 1000
+        }
+        
+        colors = {
+            "mood": CyberpunkTheme.SOFT_PEACH,
+            "hunger": CyberpunkTheme.SOFT_AMBER,
+            "energy": CyberpunkTheme.SOFT_MINT,
+            "affection": CyberpunkTheme.SOFT_LAVENDER
+        }
+        
+        for key in ["mood", "hunger", "energy", "affection"]:
+            if key in data and key in self._status_bars and key in self._status_labels:
+                value = data[key]
+                max_val = max_values.get(key, 100)
+                color = colors.get(key, CyberpunkTheme.SOFT_CYAN)
+                
+                self._status_labels[key].config(text=f"{value}/{max_val}")
+                
+                canvas = self._status_bars[key]
+                canvas.delete("all")
+                
+                bar_width = 150
+                bar_height = 12
+                fill_width = int((value / max_val) * bar_width)
+                
+                canvas.create_rectangle(
+                    0, 0, bar_width, bar_height,
+                    fill=CyberpunkTheme.BUBBLE_BG,
+                    outline=color,
+                    width=1
+                )
+                
+                if fill_width > 0:
+                    canvas.create_rectangle(
+                        1, 1, fill_width - 1, bar_height - 1,
+                        fill=color,
+                        outline=""
+                    )
+        
+        if "level" in data and "level" in self._status_labels:
+            self._status_labels["level"].config(text=f"等级: {data['level']}")
+        
+        if "experience" in data and "experience" in self._status_labels:
+            exp_per_level = 100
+            exp = data["experience"]
+            self._status_labels["experience"].config(text=f"经验: {exp}/{exp_per_level}")
+    
+    def _calculate_position(self) -> Tuple[int, int]:
+        if self._get_pet_position is not None:
+            pet_x, pet_y = self._get_pet_position()
+        else:
+            pet_x = self._root.winfo_x()
+            pet_y = self._root.winfo_y()
+        
+        panel_x = pet_x + self._pet_size + 10
+        panel_y = pet_y
+        
+        screen_width = self._root.winfo_screenwidth()
+        screen_height = self._root.winfo_screenheight()
+        
+        panel_width = 280
+        panel_height = 350
+        
+        if panel_x + panel_width > screen_width - 10:
+            panel_x = pet_x - panel_width - 10
+        
+        if panel_x < 10:
+            panel_x = 10
+        
+        if panel_y + panel_height > screen_height - 10:
+            panel_y = screen_height - panel_height - 10
+        
+        if panel_y < 10:
+            panel_y = 10
+        
+        return panel_x, panel_y
+    
+    def _handle_feed(self):
+        if self._on_feed is not None:
+            self._on_feed()
+    
+    def _handle_pet(self):
+        if self._on_pet is not None:
+            self._on_pet()
+    
+    def _handle_rest(self):
+        if self._on_rest is not None:
+            self._on_rest()
+    
+    def show(self):
+        if self._is_visible:
+            return
+        
+        self._create_panel_window()
+        
+        if self._panel_window is None:
+            return
+        
+        panel_width = 280
+        panel_height = 350
+        
+        self._panel_window.geometry(f"{panel_width}x{panel_height}")
+        
+        panel_x, panel_y = self._calculate_position()
+        self._panel_window.geometry(f"+{panel_x}+{panel_y}")
+        
+        self._panel_window.deiconify()
+        self._panel_window.lift()
+        self._root.lift()
+        
+        self._is_visible = True
+        self._start_update_timer()
+    
+    def _start_update_timer(self):
+        if self._update_timer is not None:
+            try:
+                self._root.after_cancel(self._update_timer)
+            except Exception:
+                pass
+        
+        self._update_status_bars()
+        self._update_timer = self._root.after(1000, self._start_update_timer)
+    
+    def hide(self):
+        if self._update_timer is not None:
+            try:
+                self._root.after_cancel(self._update_timer)
+            except Exception:
+                pass
+            self._update_timer = None
+        
+        if self._panel_window is not None:
+            try:
+                self._panel_window.withdraw()
+            except Exception:
+                pass
+        
+        self._is_visible = False
+    
+    def toggle(self):
+        if self._is_visible:
+            self.hide()
+        else:
+            self.show()
+    
+    @property
+    def is_visible(self) -> bool:
+        return self._is_visible
