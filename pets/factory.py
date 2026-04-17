@@ -3,6 +3,7 @@ from pets.base import PetBase
 from pets.cat import CatPet
 from pets.dog import DogPet
 from pets.rabbit import RabbitPet
+from pets.fantasy import FantasyPet
 from core.config import (
     PetType,
     SkinColor,
@@ -15,7 +16,8 @@ class PetFactory:
     _registry: Dict[PetType, Type[PetBase]] = {
         PetType.CAT: CatPet,
         PetType.DOG: DogPet,
-        PetType.RABBIT: RabbitPet
+        PetType.RABBIT: RabbitPet,
+        PetType.FANTASY: FantasyPet
     }
     
     @classmethod

@@ -33,8 +33,8 @@ class PetApplication:
         self._canvas: Optional[tk.Canvas] = None
         self._renderer: Optional[Renderer] = None
         self._current_pet: Optional[PetBase] = None
-        self._current_pet_type: PetType = PetType.CAT
-        self._current_skin: SkinColor = SkinColor.ORANGE
+        self._current_pet_type: PetType = PetType.FANTASY
+        self._current_skin: SkinColor = SkinColor.PASTEL_LAVENDER
         
         self._animation_engine: Optional[AnimationEngine] = None
         self._walk_controller: Optional[WalkController] = None
