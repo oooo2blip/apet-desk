@@ -1,6 +1,8 @@
 import tkinter as tk
 import winsound
 import os
+import atexit
+import signal
 from typing import Optional, Tuple, Dict, Any
 from core.config import (
     PetState,
@@ -51,7 +53,22 @@ class PetApplication:
         
         self._nurture_manager: Optional[NurtureManager] = None
         
+        self._is_running: bool = False
+        
+        atexit.register(self._cleanup)
+        self._setup_signal_handlers()
+        
         self._initialize()
+    
+    def _setup_signal_handlers(self):
+        def handle_signal(signum, frame):
+            self._quit_gracefully()
+        
+        try:
+            signal.signal(signal.SIGINT, handle_signal)
+            signal.signal(signal.SIGTERM, handle_signal)
+        except Exception:
+            pass
     
     def _initialize(self):
         self._setup_window()
@@ -197,6 +214,7 @@ class PetApplication:
         self._canvas.bind("<Button-2>", self._on_middle_click, add="+")
     
     def _start_engines(self):
+        self._is_running = True
         self._animation_engine.start()
         self._behavior_engine.start()
         if self._nurture_manager is not None:
@@ -337,16 +355,63 @@ class PetApplication:
     def _show_settings(self):
         self._settings_window.show()
     
-    def _quit(self):
+    def _save_nurture_data(self):
         if self._nurture_manager is not None:
-            self._nurture_manager.stop()
-            save_dir = self._get_save_directory()
-            self._nurture_manager.save(save_dir)
+            try:
+                save_dir = self._get_save_directory()
+                self._nurture_manager.save(save_dir)
+            except Exception:
+                pass
+    
+    def _stop_all_engines(self):
+        self._is_running = False
         
-        self._animation_engine.stop()
-        self._walk_controller.stop()
-        self._behavior_engine.stop()
-        self._root.quit()
+        try:
+            if self._nurture_manager is not None:
+                self._nurture_manager.stop()
+        except Exception:
+            pass
+        
+        try:
+            if self._animation_engine is not None:
+                self._animation_engine.stop()
+        except Exception:
+            pass
+        
+        try:
+            if self._walk_controller is not None:
+                self._walk_controller.stop()
+        except Exception:
+            pass
+        
+        try:
+            if self._behavior_engine is not None:
+                self._behavior_engine.stop()
+        except Exception:
+            pass
+    
+    def _quit(self):
+        self._save_nurture_data()
+        self._stop_all_engines()
+        
+        try:
+            self._root.quit()
+        except Exception:
+            pass
+    
+    def _quit_gracefully(self):
+        self._save_nurture_data()
+        self._stop_all_engines()
+        
+        try:
+            self._root.after(0, self._root.quit)
+        except Exception:
+            pass
+    
+    def _cleanup(self):
+        if self._is_running:
+            self._save_nurture_data()
+            self._stop_all_engines()
     
     def _update_window_geometry(self):
         self._root.geometry(
@@ -365,5 +430,18 @@ class PetApplication:
     def _get_pet_position(self) -> Tuple[int, int]:
         return (self._x, self._y)
     
+    def _signal_check(self):
+        if not self._is_running:
+            return
+        
+        self._root.after(200, self._signal_check)
+    
     def run(self):
-        self._root.mainloop()
+        self._root.after(200, self._signal_check)
+        
+        try:
+            self._root.mainloop()
+        except KeyboardInterrupt:
+            self._quit_gracefully()
+        except Exception:
+            self._quit_gracefully()
