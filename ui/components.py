@@ -408,6 +408,16 @@ class SpeechBubble:
         text = random.choice(phrases)
         self.show(text, duration, emotion)
     
+    def update_position(self):
+        if not self._is_visible or self._bubble_window is None:
+            return
+        
+        window_width = 300
+        window_height = 150
+        
+        bubble_x, bubble_y = self._calculate_position(window_width, window_height)
+        self._bubble_window.geometry(f"+{bubble_x}+{bubble_y}")
+    
     def hide(self):
         if self._hide_timer is not None:
             try:
@@ -626,6 +636,13 @@ class EmotionDisplay:
         emotions = list(self.EMOTION_SYMBOLS.keys())
         emotion = random.choice(emotions)
         self.show(emotion, duration)
+    
+    def update_position(self):
+        if not self._is_visible or self._emotion_window is None:
+            return
+        
+        emotion_x, emotion_y = self._calculate_position()
+        self._emotion_window.geometry(f"+{emotion_x}+{emotion_y}")
     
     def hide(self):
         if self._hide_timer is not None:
