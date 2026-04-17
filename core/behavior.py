@@ -1,10 +1,11 @@
 import tkinter as tk
 import random
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, Any
 from core.config import (
     PetState,
     AnimationConfig,
-    Direction
+    Direction,
+    NurtureConfig
 )
 
 
@@ -29,6 +30,22 @@ class BehaviorEngine:
             PetState.HAPPY,
             PetState.JUMP
         ]
+        
+        self._nurture_manager: Optional[Any] = None
+    
+    def set_nurture_manager(self, nurture_manager: Any):
+        self._nurture_manager = nurture_manager
+    
+    def _get_nurture_recommended_state(self) -> Optional[PetState]:
+        if self._nurture_manager is None:
+            return None
+        
+        return self._nurture_manager.get_recommended_state()
+    
+    def _should_override_behavior(self, recommended_state: PetState) -> bool:
+        if recommended_state == PetState.SLEEP:
+            return True
+        return False
     
     @property
     def current_state(self) -> PetState:
@@ -92,8 +109,59 @@ class BehaviorEngine:
         if not self._is_running:
             return
         
-        behavior = random.choice(self._available_behaviors)
+        recommended_state = self._get_nurture_recommended_state()
         
+        if recommended_state is not None and self._should_override_behavior(recommended_state):
+            self._apply_behavior(recommended_state)
+            self._schedule_next_behavior()
+            return
+        
+        behavior = self._select_weighted_behavior()
+        self._apply_behavior(behavior)
+        self._schedule_next_behavior()
+    
+    def _select_weighted_behavior(self) -> PetState:
+        if self._nurture_manager is None:
+            return random.choice(self._available_behaviors)
+        
+        attrs = self._nurture_manager.attributes
+        weights = {}
+        
+        for behavior in self._available_behaviors:
+            weights[behavior] = 1.0
+        
+        if attrs.mood >= 80:
+            weights[PetState.HAPPY] = 3.0
+            weights[PetState.JUMP] = 2.0
+        
+        if attrs.mood < 30:
+            weights[PetState.HAPPY] = 0.2
+            weights[PetState.JUMP] = 0.3
+            weights[PetState.IDLE] = 2.0
+        
+        if attrs.energy < 40:
+            weights[PetState.WALK] = 0.3
+            weights[PetState.JUMP] = 0.2
+            weights[PetState.SLEEP] = 2.0
+        
+        if attrs.hunger < 40:
+            weights[PetState.WALK] = 0.4
+            weights[PetState.JUMP] = 0.4
+            weights[PetState.IDLE] = 1.5
+        
+        behaviors = list(weights.keys())
+        total_weight = sum(weights.values())
+        r = random.uniform(0, total_weight)
+        
+        cumulative = 0.0
+        for behavior in behaviors:
+            cumulative += weights[behavior]
+            if r <= cumulative:
+                return behavior
+        
+        return random.choice(self._available_behaviors)
+    
+    def _apply_behavior(self, behavior: PetState):
         if behavior == PetState.WALK:
             self._current_state = PetState.WALK
             self._on_state_change(PetState.WALK)
@@ -120,8 +188,6 @@ class BehaviorEngine:
         else:
             self._current_state = PetState.IDLE
             self._on_state_change(PetState.IDLE)
-        
-        self._schedule_next_behavior()
     
     def add_behavior(self, state: PetState):
         if state not in self._available_behaviors:

@@ -1,6 +1,7 @@
 import tkinter as tk
 import winsound
-from typing import Optional, Tuple
+import os
+from typing import Optional, Tuple, Dict, Any
 from core.config import (
     PetState,
     PetType,
@@ -12,6 +13,7 @@ from core.config import (
 )
 from core.animation import AnimationEngine, WalkController
 from core.behavior import BehaviorEngine
+from core.nurture import NurtureManager
 from pets.base import PetBase
 from pets.factory import PetFactory, SkinManager
 from ui.renderer import Renderer
@@ -47,6 +49,8 @@ class PetApplication:
         self._speech_bubble: Optional[SpeechBubble] = None
         self._emotion_display: Optional[EmotionDisplay] = None
         
+        self._nurture_manager: Optional[NurtureManager] = None
+        
         self._initialize()
     
     def _initialize(self):
@@ -54,6 +58,7 @@ class PetApplication:
         self._create_canvas()
         self._create_pet()
         self._setup_engines()
+        self._setup_nurture_system()
         self._setup_ui_components()
         self._bind_click_event()
         self._start_engines()
@@ -89,6 +94,9 @@ class PetApplication:
         )
         self._current_pet.size = self._pet_size
         self._current_pet.set_renderer(self._renderer)
+        
+        if self._nurture_manager is not None:
+            self._current_pet.set_nurture_manager(self._nurture_manager)
     
     def _setup_engines(self):
         self._animation_engine = AnimationEngine(
@@ -109,6 +117,39 @@ class PetApplication:
             self._on_state_change,
             self._on_start_walk
         )
+    
+    def _setup_nurture_system(self):
+        self._nurture_manager = NurtureManager(
+            self._root,
+            on_attribute_change=self._on_nurture_attribute_change,
+            on_state_suggestion=self._on_nurture_state_suggestion,
+            on_level_up=self._on_nurture_level_up
+        )
+        
+        save_dir = self._get_save_directory()
+        self._nurture_manager.load(save_dir)
+        
+        if self._behavior_engine is not None:
+            self._behavior_engine.set_nurture_manager(self._nurture_manager)
+        
+        if self._current_pet is not None:
+            self._current_pet.set_nurture_manager(self._nurture_manager)
+    
+    def _get_save_directory(self) -> str:
+        return os.path.dirname(os.path.abspath(__file__))
+    
+    def _on_nurture_attribute_change(self, attr_name: str, old_value: int, new_value: int):
+        pass
+    
+    def _on_nurture_state_suggestion(self, state: PetState):
+        pass
+    
+    def _on_nurture_level_up(self, level: int):
+        if self._speech_bubble is not None:
+            self._speech_bubble.show(f"升级啦！现在是 {level} 级！", 5000, "happy")
+        
+        if self._emotion_display is not None:
+            self._emotion_display.show("star", 3000, 5)
     
     def _setup_ui_components(self):
         self._drag_handler = DragHandler(
@@ -152,10 +193,14 @@ class PetApplication:
     
     def _bind_click_event(self):
         self._canvas.bind("<Button-1>", self._on_click, add="+")
+        self._canvas.bind("<Double-Button-1>", self._on_double_click, add="+")
+        self._canvas.bind("<Button-2>", self._on_middle_click, add="+")
     
     def _start_engines(self):
         self._animation_engine.start()
         self._behavior_engine.start()
+        if self._nurture_manager is not None:
+            self._nurture_manager.start()
     
     def _on_frame_update(self):
         if self._current_pet is None:
@@ -188,6 +233,9 @@ class PetApplication:
         
         self._behavior_engine.trigger_interaction(PetState.HAPPY)
         
+        if self._nurture_manager is not None:
+            self._nurture_manager.pet()
+        
         if self._current_pet is not None and hasattr(self._current_pet, 'trigger_pulse'):
             self._current_pet.trigger_pulse()
         
@@ -199,6 +247,42 @@ class PetApplication:
         
         if self._sound_enabled:
             self._play_click_sound()
+    
+    def _on_double_click(self, event: tk.Event):
+        if self._drag_handler.is_dragging:
+            return
+        
+        if self._nurture_manager is not None:
+            success = self._nurture_manager.feed()
+            if success:
+                self._behavior_engine.trigger_interaction(PetState.HAPPY)
+                
+                if self._current_pet is not None and hasattr(self._current_pet, 'trigger_pulse'):
+                    self._current_pet.trigger_pulse()
+                
+                if self._speech_bubble is not None:
+                    self._speech_bubble.show("好吃！谢谢主人~", 3000, "happy")
+                
+                if self._emotion_display is not None:
+                    self._emotion_display.show("star", 2000, 3)
+                
+                if self._sound_enabled:
+                    self._play_click_sound()
+    
+    def _on_middle_click(self, event: tk.Event):
+        if self._drag_handler.is_dragging:
+            return
+        
+        if self._nurture_manager is not None:
+            success = self._nurture_manager.rest()
+            if success:
+                self._behavior_engine.trigger_interaction(PetState.SLEEP, duration=3000)
+                
+                if self._speech_bubble is not None:
+                    self._speech_bubble.show("休息一下~ zzz", 3000, "tired")
+                
+                if self._emotion_display is not None:
+                    self._emotion_display.show("sleep", 2000, 2)
     
     def _play_click_sound(self):
         try:
@@ -254,6 +338,11 @@ class PetApplication:
         self._settings_window.show()
     
     def _quit(self):
+        if self._nurture_manager is not None:
+            self._nurture_manager.stop()
+            save_dir = self._get_save_directory()
+            self._nurture_manager.save(save_dir)
+        
         self._animation_engine.stop()
         self._walk_controller.stop()
         self._behavior_engine.stop()
