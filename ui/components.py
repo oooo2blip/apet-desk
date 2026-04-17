@@ -320,13 +320,13 @@ class SpeechBubble:
     
     def _get_neon_colors_by_emotion(self, emotion: str) -> Tuple[str, str]:
         color_map = {
-            "happy": (CyberpunkTheme.NEON_YELLOW, CyberpunkTheme.NEON_PINK),
-            "surprised": (CyberpunkTheme.ELECTRIC_BLUE, CyberpunkTheme.GLITCH_PURPLE),
-            "tired": (CyberpunkTheme.TECH_BLACK, CyberpunkTheme.NEON_PINK),
-            "curious": (CyberpunkTheme.CYBER_GREEN, CyberpunkTheme.ELECTRIC_BLUE),
-            "playful": (CyberpunkTheme.NEON_PINK, CyberpunkTheme.NEON_ORANGE)
+            "happy": (CyberpunkTheme.SOFT_AMBER, CyberpunkTheme.SOFT_MAUVE),
+            "surprised": (CyberpunkTheme.SOFT_CYAN, CyberpunkTheme.SOFT_LAVENDER),
+            "tired": (CyberpunkTheme.SOFT_LAVENDER, CyberpunkTheme.SOFT_MINT),
+            "curious": (CyberpunkTheme.SOFT_SAGE, CyberpunkTheme.SOFT_CYAN),
+            "playful": (CyberpunkTheme.SOFT_PEACH, CyberpunkTheme.SOFT_MAUVE)
         }
-        return color_map.get(emotion, (CyberpunkTheme.ELECTRIC_BLUE, CyberpunkTheme.NEON_PINK))
+        return color_map.get(emotion, (CyberpunkTheme.PRIMARY_GLOW, CyberpunkTheme.SECONDARY_GLOW))
     
     def _draw_bubble(self, text: str, emotion: str):
         if self._canvas is None:
@@ -345,15 +345,16 @@ class SpeechBubble:
         
         primary_neon, secondary_neon = self._get_neon_colors_by_emotion(emotion)
         
-        tech_bg = "#1a1a2e"
+        tech_bg = CyberpunkTheme.BUBBLE_BG
         self._canvas.create_oval(
-            bubble_x1 + 2, bubble_y1 + 2, bubble_x2 - 2, bubble_y2 - 2,
+            bubble_x1 + 1, bubble_y1 + 1, bubble_x2 - 1, bubble_y2 - 1,
             fill=tech_bg, outline=""
         )
         
-        for i in range(3):
-            offset = (3 - i) * 2
-            width = 1 + i
+        glow_layers = 2
+        for i in range(glow_layers):
+            offset = (glow_layers - i) * 1
+            width = 1
             
             if i % 2 == 0:
                 glow_color = primary_neon
@@ -369,7 +370,7 @@ class SpeechBubble:
         
         self._canvas.create_oval(
             bubble_x1, bubble_y1, bubble_x2, bubble_y2,
-            outline=CyberpunkTheme.NEON_YELLOW, width=2
+            outline=CyberpunkTheme.BUBBLE_BORDER, width=1
         )
         
         tail_x = center_x
@@ -377,47 +378,18 @@ class SpeechBubble:
         tail_y2 = bubble_y2 + 20
         tail_offset = 12
         
-        for i in range(3):
-            offset = (3 - i) * 2
-            
-            if i % 2 == 0:
-                glow_color = primary_neon
-            else:
-                glow_color = secondary_neon
-            
-            scale = 1 + offset / 60
-            scaled_tail_x1 = center_x - tail_offset * scale
-            scaled_tail_x2 = center_x + tail_offset * scale
-            scaled_tail_y2 = tail_y2 + offset * 0.5
-            
-            self._canvas.create_polygon(
-                scaled_tail_x1, tail_y1 - offset,
-                scaled_tail_x2, tail_y1 - offset,
-                center_x, scaled_tail_y2,
-                outline=glow_color, width=1 + i, fill=""
-            )
-        
         self._canvas.create_polygon(
             tail_x - tail_offset, tail_y1,
             tail_x + tail_offset, tail_y1,
             tail_x, tail_y2,
-            fill=tech_bg, outline=CyberpunkTheme.NEON_YELLOW, width=2
+            fill=tech_bg, outline=CyberpunkTheme.BUBBLE_BORDER, width=1
         )
-        
-        for offset in [(-1, -1), (1, -1), (-1, 1), (1, 1),
-                       (-2, 0), (2, 0), (0, -2), (0, 2)]:
-            self._canvas.create_text(
-                center_x + offset[0], center_y + offset[1],
-                text=text,
-                font=("Microsoft YaHei", 11),
-                fill=primary_neon
-            )
         
         self._canvas.create_text(
             center_x, center_y,
             text=text,
             font=("Microsoft YaHei", 11),
-            fill=CyberpunkTheme.NEON_YELLOW
+            fill=CyberpunkTheme.BUBBLE_TEXT
         )
     
     def show(self, text: str, duration: int = 3000, emotion: str = "happy"):
