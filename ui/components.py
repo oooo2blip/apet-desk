@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import Menu, Toplevel, Label, Scale, Button, Checkbutton
-from typing import Optional, Callable, Any, List
+from typing import Optional, Callable, Any, List, Tuple
 from core.config import (
     PetType,
     SkinColor,
