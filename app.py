@@ -15,7 +15,7 @@ from core.behavior import BehaviorEngine
 from pets.base import PetBase
 from pets.factory import PetFactory, SkinManager
 from ui.renderer import Renderer
-from ui.components import DragHandler, ContextMenu, SettingsWindow
+from ui.components import DragHandler, ContextMenu, SettingsWindow, SpeechBubble, EmotionDisplay
 
 
 class PetApplication:
@@ -43,6 +43,9 @@ class PetApplication:
         self._drag_handler: Optional[DragHandler] = None
         self._context_menu: Optional[ContextMenu] = None
         self._settings_window: Optional[SettingsWindow] = None
+        
+        self._speech_bubble: Optional[SpeechBubble] = None
+        self._emotion_display: Optional[EmotionDisplay] = None
         
         self._initialize()
     
@@ -135,6 +138,9 @@ class PetApplication:
             self._on_sound_toggle,
             self._on_autostart_toggle
         )
+        
+        self._speech_bubble = SpeechBubble(self._canvas, self._pet_size)
+        self._emotion_display = EmotionDisplay(self._canvas, self._pet_size)
     
     def _bind_click_event(self):
         self._canvas.bind("<Button-1>", self._on_click, add="+")
@@ -167,6 +173,12 @@ class PetApplication:
             return
         
         self._behavior_engine.trigger_interaction(PetState.HAPPY)
+        
+        if self._speech_bubble is not None:
+            self._speech_bubble.show_random("happy", 3000)
+        
+        if self._emotion_display is not None:
+            self._emotion_display.show("heart", 2000, 3)
         
         if self._sound_enabled:
             self._play_click_sound()
@@ -208,6 +220,12 @@ class PetApplication:
         if self._current_pet is not None:
             self._current_pet.size = self._pet_size
             self._current_pet.draw()
+        
+        if self._speech_bubble is not None:
+            self._speech_bubble.hide()
+        
+        if self._emotion_display is not None:
+            self._emotion_display.hide()
     
     def _on_sound_toggle(self, enabled: bool):
         self._sound_enabled = enabled
