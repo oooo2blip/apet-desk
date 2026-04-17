@@ -19,7 +19,7 @@ from core.nurture import NurtureManager
 from pets.base import PetBase
 from pets.factory import PetFactory, SkinManager
 from ui.renderer import Renderer
-from ui.components import DragHandler, ContextMenu, SettingsWindow, SpeechBubble, EmotionDisplay
+from ui.components import DragHandler, ContextMenu, SettingsWindow, SpeechBubble, EmotionDisplay, PetStatusPanel
 
 
 class PetApplication:
@@ -52,6 +52,8 @@ class PetApplication:
         self._emotion_display: Optional[EmotionDisplay] = None
         
         self._nurture_manager: Optional[NurtureManager] = None
+        
+        self._status_panel: Optional[PetStatusPanel] = None
         
         self._is_running: bool = False
         
@@ -184,6 +186,7 @@ class PetApplication:
             self._on_pet_change,
             self._on_skin_change,
             self._show_settings,
+            self._show_status_panel,
             self._quit
         )
         
@@ -206,6 +209,16 @@ class PetApplication:
             self._root,
             self._pet_size,
             self._get_pet_position
+        )
+        
+        self._status_panel = PetStatusPanel(
+            self._root,
+            self._pet_size,
+            self._get_pet_position,
+            self._on_feed_from_panel,
+            self._on_pet_from_panel,
+            self._on_rest_from_panel,
+            self._get_nurture_data
         )
     
     def _bind_click_event(self):
@@ -354,6 +367,63 @@ class PetApplication:
     
     def _show_settings(self):
         self._settings_window.show()
+    
+    def _show_status_panel(self):
+        if self._status_panel is not None:
+            self._status_panel.toggle()
+    
+    def _get_nurture_data(self):
+        if self._nurture_manager is not None:
+            return self._nurture_manager.to_dict()
+        return None
+    
+    def _on_feed_from_panel(self):
+        if self._nurture_manager is not None:
+            success = self._nurture_manager.feed()
+            if success:
+                self._behavior_engine.trigger_interaction(PetState.HAPPY)
+                
+                if self._current_pet is not None and hasattr(self._current_pet, 'trigger_pulse'):
+                    self._current_pet.trigger_pulse()
+                
+                if self._speech_bubble is not None:
+                    self._speech_bubble.show("好吃！谢谢主人~", 3000, "happy")
+                
+                if self._emotion_display is not None:
+                    self._emotion_display.show("star", 2000, 3)
+                
+                if self._sound_enabled:
+                    self._play_click_sound()
+    
+    def _on_pet_from_panel(self):
+        self._behavior_engine.trigger_interaction(PetState.HAPPY)
+        
+        if self._nurture_manager is not None:
+            self._nurture_manager.pet()
+        
+        if self._current_pet is not None and hasattr(self._current_pet, 'trigger_pulse'):
+            self._current_pet.trigger_pulse()
+        
+        if self._speech_bubble is not None:
+            self._speech_bubble.show_random("happy", 3000)
+        
+        if self._emotion_display is not None:
+            self._emotion_display.show("heart", 2000, 3)
+        
+        if self._sound_enabled:
+            self._play_click_sound()
+    
+    def _on_rest_from_panel(self):
+        if self._nurture_manager is not None:
+            success = self._nurture_manager.rest()
+            if success:
+                self._behavior_engine.trigger_interaction(PetState.SLEEP, duration=3000)
+                
+                if self._speech_bubble is not None:
+                    self._speech_bubble.show("休息一下~ zzz", 3000, "tired")
+                
+                if self._emotion_display is not None:
+                    self._emotion_display.show("sleep", 2000, 2)
     
     def _save_nurture_data(self):
         if self._nurture_manager is not None:
