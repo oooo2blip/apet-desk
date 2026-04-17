@@ -6,7 +6,8 @@ from core.config import (
     SkinColor,
     ColorPalette,
     AnimationFrames,
-    CyberpunkTheme
+    CyberpunkTheme,
+    NurtureConfig
 )
 
 
@@ -34,6 +35,31 @@ class PetBase(ABC):
         self._neon_phase: float = 0.0
         self._glitch_phase: float = 0.0
         self._pulse_intensity: float = 0.0
+        
+        self._nurture_manager: Optional[Any] = None
+    
+    def set_nurture_manager(self, nurture_manager: Any):
+        self._nurture_manager = nurture_manager
+    
+    def get_nurture_attributes(self) -> Dict[str, int]:
+        if self._nurture_manager is None:
+            return {
+                "mood": NurtureConfig.DEFAULT_MOOD,
+                "hunger": NurtureConfig.DEFAULT_HUNGER,
+                "energy": NurtureConfig.DEFAULT_ENERGY,
+                "affection": NurtureConfig.DEFAULT_AFFECTION,
+                "level": NurtureConfig.DEFAULT_LEVEL,
+                "experience": NurtureConfig.DEFAULT_EXPERIENCE
+            }
+        
+        return {
+            "mood": self._nurture_manager.mood,
+            "hunger": self._nurture_manager.hunger,
+            "energy": self._nurture_manager.energy,
+            "affection": self._nurture_manager.affection,
+            "level": self._nurture_manager.level,
+            "experience": self._nurture_manager.experience
+        }
     
     @property
     def state(self) -> PetState:
