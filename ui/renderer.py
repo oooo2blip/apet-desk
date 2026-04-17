@@ -1,12 +1,15 @@
 import tkinter as tk
+import math
 from typing import Optional, Tuple, List
-from core.config import ColorPalette
+from core.config import ColorPalette, CyberpunkTheme
 
 
 class Renderer:
     def __init__(self, canvas: tk.Canvas):
         self._canvas = canvas
         self._drawn_items: List[int] = []
+        self._glow_phase: float = 0.0
+        self._glitch_phase: float = 0.0
     
     def clear(self):
         for item in self._drawn_items:
@@ -122,3 +125,214 @@ class Renderer:
             self.draw_text(base_x + 20, base_y - 15, "Z", ("Arial", 10), ColorPalette.GRAY)
             self.draw_text(base_x + 30, base_y - 25, "z", ("Arial", 8), ColorPalette.GRAY)
             self.draw_text(base_x + 40, base_y - 35, "z", ("Arial", 6), ColorPalette.GRAY)
+    
+    def update_glow_phase(self, delta: float = 0.1):
+        self._glow_phase += delta
+        if self._glow_phase > 2 * math.pi:
+            self._glow_phase -= 2 * math.pi
+    
+    def update_glitch_phase(self, delta: float = 0.2):
+        self._glitch_phase += delta
+        if self._glitch_phase > 1.0:
+            self._glitch_phase = 0.0
+    
+    def get_breath_intensity(self) -> float:
+        return 0.5 + 0.5 * math.sin(self._glow_phase)
+    
+    def draw_neon_glow_oval(self, x1: int, y1: int, x2: int, y2: int,
+                             primary_color: str = CyberpunkTheme.ELECTRIC_BLUE,
+                             secondary_color: str = CyberpunkTheme.NEON_PINK,
+                             glow_layers: int = 3,
+                             base_width: int = 1) -> List[int]:
+        items = []
+        breath_intensity = self.get_breath_intensity()
+        
+        for i in range(glow_layers):
+            offset = (glow_layers - i) * 2
+            width = base_width + i
+            opacity_factor = 1.0 - (i / glow_layers) * 0.5
+            
+            glow_x1 = x1 - offset
+            glow_y1 = y1 - offset
+            glow_x2 = x2 + offset
+            glow_y2 = y2 + offset
+            
+            if i % 2 == 0:
+                color = primary_color
+            else:
+                color = secondary_color
+            
+            items.append(self._canvas.create_oval(
+                glow_x1, glow_y1, glow_x2, glow_y2,
+                outline=color,
+                width=width
+            ))
+        
+        self._drawn_items.extend(items)
+        return items
+    
+    def draw_neon_glow_polygon(self, points: List[int],
+                                primary_color: str = CyberpunkTheme.ELECTRIC_BLUE,
+                                secondary_color: str = CyberpunkTheme.NEON_PINK,
+                                glow_layers: int = 3) -> List[int]:
+        items = []
+        
+        for i in range(glow_layers):
+            offset = (glow_layers - i) * 2
+            width = 1 + i
+            
+            scaled_points = []
+            center_x = sum(points[::2]) / (len(points) // 2)
+            center_y = sum(points[1::2]) / (len(points) // 2)
+            
+            for j in range(0, len(points), 2):
+                px = points[j]
+                py = points[j + 1]
+                dx = px - center_x
+                dy = py - center_y
+                dist = math.sqrt(dx * dx + dy * dy)
+                if dist > 0:
+                    scale = (dist + offset) / dist
+                else:
+                    scale = 1.0
+                scaled_points.append(center_x + dx * scale)
+                scaled_points.append(center_y + dy * scale)
+            
+            if i % 2 == 0:
+                color = primary_color
+            else:
+                color = secondary_color
+            
+            items.append(self._canvas.create_polygon(
+                *scaled_points,
+                outline=color,
+                width=width,
+                fill=""
+            ))
+        
+        self._drawn_items.extend(items)
+        return items
+    
+    def draw_neon_glow_line(self, x1: int, y1: int, x2: int, y2: int,
+                             primary_color: str = CyberpunkTheme.ELECTRIC_BLUE,
+                             secondary_color: str = CyberpunkTheme.NEON_PINK,
+                             glow_layers: int = 3,
+                             base_width: int = 2) -> List[int]:
+        items = []
+        
+        for i in range(glow_layers):
+            offset = (glow_layers - i) * 2
+            width = base_width + i
+            
+            if i % 2 == 0:
+                color = primary_color
+            else:
+                color = secondary_color
+            
+            items.append(self._canvas.create_line(
+                x1, y1 - offset, x2, y2 - offset,
+                fill=color,
+                width=width,
+                smooth=True
+            ))
+            items.append(self._canvas.create_line(
+                x1, y1 + offset, x2, y2 + offset,
+                fill=color,
+                width=width,
+                smooth=True
+            ))
+        
+        items.append(self._canvas.create_line(
+            x1, y1, x2, y2,
+            fill=CyberpunkTheme.NEON_YELLOW,
+            width=base_width // 2,
+            smooth=True
+        ))
+        
+        self._drawn_items.extend(items)
+        return items
+    
+    def draw_glitch_effect(self, x1: int, y1: int, x2: int, y2: int,
+                            intensity: float = 0.3) -> List[int]:
+        items = []
+        
+        if self._glitch_phase > 0.7:
+            glitch_offset = int(5 * self._glitch_phase)
+            segment_height = (y2 - y1) // 3
+            
+            for i in range(3):
+                seg_y1 = y1 + i * segment_height
+                seg_y2 = seg_y1 + segment_height
+                
+                if i % 2 == 0:
+                    offset_x = glitch_offset
+                else:
+                    offset_x = -glitch_offset
+                
+                if self._glitch_phase > 0.85:
+                    color = CyberpunkTheme.CYBER_GREEN
+                else:
+                    color = CyberpunkTheme.NEON_PINK
+                
+                items.append(self._canvas.create_rectangle(
+                    x1 + offset_x, seg_y1,
+                    x2 + offset_x, seg_y2,
+                    outline=color,
+                    width=1,
+                    fill=""
+                ))
+        
+        self._drawn_items.extend(items)
+        return items
+    
+    def draw_pulse_flash(self, center_x: int, center_y: int,
+                         radius: int, intensity: float) -> List[int]:
+        items = []
+        
+        if intensity <= 0:
+            return items
+        
+        colors = [
+            CyberpunkTheme.NEON_PINK,
+            CyberpunkTheme.ELECTRIC_BLUE,
+            CyberpunkTheme.NEON_YELLOW
+        ]
+        
+        for i, color in enumerate(colors):
+            r = int(radius * (1 + i * 0.3) * intensity)
+            alpha_width = int(3 * intensity)
+            
+            items.append(self._canvas.create_oval(
+                center_x - r, center_y - r,
+                center_x + r, center_y + r,
+                outline=color,
+                width=alpha_width
+            ))
+        
+        self._drawn_items.extend(items)
+        return items
+    
+    def draw_neon_text(self, x: int, y: int, text: str,
+                       font: Tuple[str, int] = ("Arial", 12),
+                       glow_color: str = CyberpunkTheme.ELECTRIC_BLUE,
+                       text_color: str = CyberpunkTheme.NEON_YELLOW) -> List[int]:
+        items = []
+        
+        for offset in [(-1, -1), (1, -1), (-1, 1), (1, 1),
+                       (-2, 0), (2, 0), (0, -2), (0, 2)]:
+            items.append(self._canvas.create_text(
+                x + offset[0], y + offset[1],
+                text=text,
+                font=font,
+                fill=glow_color
+            ))
+        
+        items.append(self._canvas.create_text(
+            x, y,
+            text=text,
+            font=font,
+            fill=text_color
+        ))
+        
+        self._drawn_items.extend(items)
+        return items

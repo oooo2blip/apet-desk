@@ -188,6 +188,9 @@ class PetApplication:
         
         self._behavior_engine.trigger_interaction(PetState.HAPPY)
         
+        if self._current_pet is not None and hasattr(self._current_pet, 'trigger_pulse'):
+            self._current_pet.trigger_pulse()
+        
         if self._speech_bubble is not None:
             self._speech_bubble.show_random("happy", 3000)
         
