@@ -14,8 +14,8 @@ class PetBase(ABC):
     PET_TYPE = None
     DISPLAY_NAME = None
     
-    NEON_PRIMARY_COLOR = CyberpunkTheme.ELECTRIC_BLUE
-    NEON_SECONDARY_COLOR = CyberpunkTheme.NEON_PINK
+    NEON_PRIMARY_COLOR = CyberpunkTheme.PRIMARY_GLOW
+    NEON_SECONDARY_COLOR = CyberpunkTheme.SECONDARY_GLOW
     
     def __init__(self, skin_color: SkinColor = SkinColor.ORANGE):
         self._state: PetState = PetState.IDLE
@@ -102,16 +102,16 @@ class PetBase(ABC):
         return self._frame_index % AnimationFrames.SLEEP_Z_INTERVAL
     
     def _update_neon_phase(self):
-        self._neon_phase += 0.1
+        self._neon_phase += 0.05
         if self._neon_phase > 2 * math.pi:
             self._neon_phase -= 2 * math.pi
         
-        self._glitch_phase += 0.05
+        self._glitch_phase += 0.02
         if self._glitch_phase > 1.0:
             self._glitch_phase = 0.0
         
         if self._pulse_intensity > 0:
-            self._pulse_intensity -= 0.05
+            self._pulse_intensity -= 0.03
             if self._pulse_intensity < 0:
                 self._pulse_intensity = 0
     
@@ -135,11 +135,11 @@ class PetBase(ABC):
         x1, y1, x2, y2 = bounds
         
         breath_intensity = self._get_breath_intensity()
-        glow_layers = 3
+        glow_layers = 2
         
         for i in range(glow_layers):
-            offset = int((glow_layers - i) * 3 * breath_intensity)
-            width = 1 + i
+            offset = int((glow_layers - i) * 2 * breath_intensity)
+            width = 1
             
             if i % 2 == 0:
                 color = self.NEON_PRIMARY_COLOR
@@ -147,13 +147,13 @@ class PetBase(ABC):
                 color = self.NEON_SECONDARY_COLOR
             
             if self._state == PetState.HAPPY:
-                color = CyberpunkTheme.NEON_YELLOW if i % 2 == 0 else CyberpunkTheme.NEON_PINK
+                color = CyberpunkTheme.SOFT_AMBER if i % 2 == 0 else CyberpunkTheme.SOFT_MAUVE
             elif self._state == PetState.SLEEP:
-                color = CyberpunkTheme.ELECTRIC_BLUE if i % 2 == 0 else CyberpunkTheme.GLITCH_PURPLE
+                color = CyberpunkTheme.SOFT_LAVENDER if i % 2 == 0 else CyberpunkTheme.SOFT_MINT
             elif self._state == PetState.WALK:
-                color = CyberpunkTheme.CYBER_GREEN if i % 2 == 0 else CyberpunkTheme.ELECTRIC_BLUE
+                color = CyberpunkTheme.SOFT_SAGE if i % 2 == 0 else CyberpunkTheme.SOFT_CYAN
             elif self._state == PetState.JUMP:
-                color = CyberpunkTheme.NEON_ORANGE if i % 2 == 0 else CyberpunkTheme.NEON_PINK
+                color = CyberpunkTheme.SOFT_PEACH if i % 2 == 0 else CyberpunkTheme.SOFT_MAUVE
             
             gx1 = x1 - offset
             gy1 = y1 - offset
@@ -162,24 +162,21 @@ class PetBase(ABC):
             
             self._renderer.draw_oval(gx1, gy1, gx2, gy2, fill="", outline=color, width=width)
         
-        self._renderer.draw_oval(x1, y1, x2, y2, fill="", outline=CyberpunkTheme.NEON_YELLOW, width=1)
+        self._renderer.draw_oval(x1, y1, x2, y2, fill="", outline=CyberpunkTheme.PRIMARY_GLOW, width=1)
     
     def _draw_glitch_effect(self, center: int):
         if self._renderer is None:
             return
         
-        if self._glitch_phase > 0.7:
+        if self._glitch_phase > 0.95:
             bounds = self._get_pet_bounds(center)
             x1, y1, x2, y2 = bounds
             
-            glitch_offset = int(3 * self._glitch_phase)
-            segment_height = (y2 - y1) // 4
+            glitch_offset = 1
+            segment_height = (y2 - y1) // 6
             
-            for i in range(4):
-                if i % 3 == 0:
-                    continue
-                
-                seg_y1 = y1 + i * segment_height
+            for i in range(2):
+                seg_y1 = y1 + (i + 2) * segment_height
                 seg_y2 = seg_y1 + segment_height
                 
                 if i % 2 == 0:
@@ -187,19 +184,11 @@ class PetBase(ABC):
                 else:
                     offset_x = -glitch_offset
                 
-                if self._glitch_phase > 0.85:
-                    color = CyberpunkTheme.CYBER_GREEN
-                else:
-                    color = CyberpunkTheme.NEON_PINK
+                color = CyberpunkTheme.SOFT_CYAN
                 
                 self._renderer.draw_line(
                     x1 + offset_x, seg_y1,
                     x2 + offset_x, seg_y1,
-                    fill=color, width=1
-                )
-                self._renderer.draw_line(
-                    x1 + offset_x, seg_y2,
-                    x2 + offset_x, seg_y2,
                     fill=color, width=1
                 )
     
@@ -208,14 +197,14 @@ class PetBase(ABC):
             return
         
         colors = [
-            CyberpunkTheme.NEON_PINK,
-            CyberpunkTheme.ELECTRIC_BLUE,
-            CyberpunkTheme.NEON_YELLOW
+            CyberpunkTheme.SOFT_MAUVE,
+            CyberpunkTheme.SOFT_CYAN,
+            CyberpunkTheme.SOFT_AMBER
         ]
         
         for i, color in enumerate(colors):
-            r = int(self._size * 0.6 * (1 + i * 0.2) * self._pulse_intensity)
-            width = int(3 * self._pulse_intensity)
+            r = int(self._size * 0.4 * (1 + i * 0.15) * self._pulse_intensity)
+            width = 1
             
             self._renderer.draw_oval(
                 center - r, center - r,

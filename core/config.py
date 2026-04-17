@@ -2,26 +2,26 @@ from enum import Enum
 
 
 class CyberpunkTheme:
-    ELECTRIC_BLUE = "#00D4FF"
-    NEON_PINK = "#FF00FF"
-    GLITCH_PURPLE = "#9D00FF"
-    TECH_BLACK = "#0A0A0A"
-    CYBER_GREEN = "#39FF14"
-    NEON_ORANGE = "#FF5E00"
-    NEON_YELLOW = "#FFFF00"
+    SOFT_CYAN = "#7EC8E3"
+    SOFT_LAVENDER = "#D8BFD8"
+    SOFT_MAUVE = "#E6B0AA"
+    SOFT_PEACH = "#FADBD8"
+    SOFT_SAGE = "#A9DFBF"
+    SOFT_AMBER = "#F9E79F"
+    SOFT_MINT = "#A3E4D7"
+    
+    PRIMARY_GLOW = "#7EC8E3"
+    SECONDARY_GLOW = "#D8BFD8"
+    ACCENT_GLOW = "#E6B0AA"
+    
+    BUBBLE_BG = "#2C3E50"
+    BUBBLE_BORDER = "#7EC8E3"
+    BUBBLE_TEXT = "#F8F9F9"
     
     NEON_GLOW_COLORS = [
-        ELECTRIC_BLUE,
-        NEON_PINK,
-        GLITCH_PURPLE,
-        CYBER_GREEN,
-        NEON_ORANGE
-    ]
-    
-    GLOW_ALPHA_LAYERS = [
-        {"color": ELECTRIC_BLUE, "offset": 2, "width": 3},
-        {"color": NEON_PINK, "offset": 1, "width": 2},
-        {"color": GLITCH_PURPLE, "offset": 0, "width": 1},
+        PRIMARY_GLOW,
+        SECONDARY_GLOW,
+        ACCENT_GLOW
     ]
 
 

@@ -140,9 +140,9 @@ class Renderer:
         return 0.5 + 0.5 * math.sin(self._glow_phase)
     
     def draw_neon_glow_oval(self, x1: int, y1: int, x2: int, y2: int,
-                             primary_color: str = CyberpunkTheme.ELECTRIC_BLUE,
-                             secondary_color: str = CyberpunkTheme.NEON_PINK,
-                             glow_layers: int = 3,
+                             primary_color: str = CyberpunkTheme.PRIMARY_GLOW,
+                             secondary_color: str = CyberpunkTheme.SECONDARY_GLOW,
+                             glow_layers: int = 2,
                              base_width: int = 1) -> List[int]:
         items = []
         breath_intensity = self.get_breath_intensity()
@@ -172,9 +172,9 @@ class Renderer:
         return items
     
     def draw_neon_glow_polygon(self, points: List[int],
-                                primary_color: str = CyberpunkTheme.ELECTRIC_BLUE,
-                                secondary_color: str = CyberpunkTheme.NEON_PINK,
-                                glow_layers: int = 3) -> List[int]:
+                                primary_color: str = CyberpunkTheme.PRIMARY_GLOW,
+                                secondary_color: str = CyberpunkTheme.SECONDARY_GLOW,
+                                glow_layers: int = 2) -> List[int]:
         items = []
         
         for i in range(glow_layers):
@@ -214,9 +214,9 @@ class Renderer:
         return items
     
     def draw_neon_glow_line(self, x1: int, y1: int, x2: int, y2: int,
-                             primary_color: str = CyberpunkTheme.ELECTRIC_BLUE,
-                             secondary_color: str = CyberpunkTheme.NEON_PINK,
-                             glow_layers: int = 3,
+                             primary_color: str = CyberpunkTheme.PRIMARY_GLOW,
+                             secondary_color: str = CyberpunkTheme.SECONDARY_GLOW,
+                             glow_layers: int = 2,
                              base_width: int = 2) -> List[int]:
         items = []
         
@@ -244,7 +244,7 @@ class Renderer:
         
         items.append(self._canvas.create_line(
             x1, y1, x2, y2,
-            fill=CyberpunkTheme.NEON_YELLOW,
+            fill=CyberpunkTheme.SOFT_AMBER,
             width=base_width // 2,
             smooth=True
         ))
@@ -256,12 +256,12 @@ class Renderer:
                             intensity: float = 0.3) -> List[int]:
         items = []
         
-        if self._glitch_phase > 0.7:
-            glitch_offset = int(5 * self._glitch_phase)
-            segment_height = (y2 - y1) // 3
+        if self._glitch_phase > 0.95:
+            glitch_offset = 1
+            segment_height = (y2 - y1) // 6
             
-            for i in range(3):
-                seg_y1 = y1 + i * segment_height
+            for i in range(2):
+                seg_y1 = y1 + (i + 2) * segment_height
                 seg_y2 = seg_y1 + segment_height
                 
                 if i % 2 == 0:
@@ -269,17 +269,13 @@ class Renderer:
                 else:
                     offset_x = -glitch_offset
                 
-                if self._glitch_phase > 0.85:
-                    color = CyberpunkTheme.CYBER_GREEN
-                else:
-                    color = CyberpunkTheme.NEON_PINK
+                color = CyberpunkTheme.SOFT_CYAN
                 
-                items.append(self._canvas.create_rectangle(
+                items.append(self._canvas.create_line(
                     x1 + offset_x, seg_y1,
-                    x2 + offset_x, seg_y2,
-                    outline=color,
-                    width=1,
-                    fill=""
+                    x2 + offset_x, seg_y1,
+                    fill=color,
+                    width=1
                 ))
         
         self._drawn_items.extend(items)
@@ -293,14 +289,14 @@ class Renderer:
             return items
         
         colors = [
-            CyberpunkTheme.NEON_PINK,
-            CyberpunkTheme.ELECTRIC_BLUE,
-            CyberpunkTheme.NEON_YELLOW
+            CyberpunkTheme.SOFT_MAUVE,
+            CyberpunkTheme.SOFT_CYAN,
+            CyberpunkTheme.SOFT_AMBER
         ]
         
         for i, color in enumerate(colors):
-            r = int(radius * (1 + i * 0.3) * intensity)
-            alpha_width = int(3 * intensity)
+            r = int(radius * 0.6 * (1 + i * 0.15) * intensity)
+            alpha_width = 1
             
             items.append(self._canvas.create_oval(
                 center_x - r, center_y - r,
@@ -314,8 +310,8 @@ class Renderer:
     
     def draw_neon_text(self, x: int, y: int, text: str,
                        font: Tuple[str, int] = ("Arial", 12),
-                       glow_color: str = CyberpunkTheme.ELECTRIC_BLUE,
-                       text_color: str = CyberpunkTheme.NEON_YELLOW) -> List[int]:
+                       glow_color: str = CyberpunkTheme.PRIMARY_GLOW,
+                       text_color: str = CyberpunkTheme.SOFT_AMBER) -> List[int]:
         items = []
         
         for offset in [(-1, -1), (1, -1), (-1, 1), (1, 1),
