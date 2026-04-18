@@ -83,6 +83,7 @@ class PetState(Enum):
     SLEEP = "sleep"
     JUMP = "jump"
     SAD = "sad"
+    EAT = "eat"
 
 
 class PetType(Enum):

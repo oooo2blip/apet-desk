@@ -287,6 +287,7 @@ class ImagePetBase(PetBase):
         PetState.HAPPY: "happy",
         PetState.SLEEP: "sleep",
         PetState.SAD: "sad",
+        PetState.EAT: "eat",
         PetState.WALK: "idle",
         PetState.JUMP: "happy"
     }
@@ -304,11 +305,13 @@ class ImagePetBase(PetBase):
         self._current_image_ref: Optional[ImageTk.PhotoImage] = None
         self._canvas_image_id: Optional[int] = None
         self._images_loaded: bool = False
+        self._eat_timer: Optional[Any] = None
+        self._is_eating: bool = False
         
         self._load_pil_images()
     
     def _load_pil_images(self):
-        required_states = ["idle", "happy", "sad", "sleep"]
+        required_states = ["idle", "happy", "sad", "sleep", "eat"]
         
         for state in required_states:
             image_path = os.path.join(self._images_dir, f"{state}.png")
