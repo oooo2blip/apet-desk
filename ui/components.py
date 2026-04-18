@@ -761,6 +761,7 @@ class PetStatusPanel:
         self._panel_window.overrideredirect(True)
         self._panel_window.attributes("-topmost", True)
         self._panel_window.attributes("-transparentcolor", MinimalTheme.TRANSPARENT_MASK)
+        self._panel_window.protocol("WM_DELETE_WINDOW", self.hide)
         self._panel_window.withdraw()
         
         self._create_widgets()
@@ -1039,7 +1040,7 @@ class PetStatusPanel:
         screen_height = self._root.winfo_screenheight()
         
         panel_width = 260
-        panel_height = 420
+        panel_height = self._panel_window.winfo_height() if self._panel_window else 450
         
         if panel_x + panel_width > screen_width - 20:
             panel_x = pet_x - panel_width - 12
@@ -1216,8 +1217,13 @@ class PetStatusPanel:
         if self._panel_window is None:
             return
         
+        self._panel_window.update_idletasks()
+        
         panel_width = 260
-        panel_height = 420
+        panel_height = self._panel_window.winfo_reqheight()
+        
+        if panel_height < 450:
+            panel_height = 450
         
         self._panel_window.geometry(f"{panel_width}x{panel_height}")
         
@@ -1226,7 +1232,6 @@ class PetStatusPanel:
         
         self._panel_window.deiconify()
         self._panel_window.lift()
-        self._root.lift()
         
         self._is_visible = True
         self._start_update_timer()
