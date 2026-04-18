@@ -350,16 +350,21 @@ class ImagePetBase(PetBase):
             target_size = self._size
         
         MIN_SCALE_SIZE = 1
+        canvas_width = target_size
+        canvas_height = target_size
         
-        if self._image_aspect_ratio > 1.0:
-            self._scaled_image_width = max(MIN_SCALE_SIZE, target_size)
-            self._scaled_image_height = max(MIN_SCALE_SIZE, int(target_size / self._image_aspect_ratio))
-        elif self._image_aspect_ratio < 1.0:
-            self._scaled_image_height = max(MIN_SCALE_SIZE, target_size)
-            self._scaled_image_width = max(MIN_SCALE_SIZE, int(target_size * self._image_aspect_ratio))
-        else:
-            self._scaled_image_width = max(MIN_SCALE_SIZE, target_size)
-            self._scaled_image_height = max(MIN_SCALE_SIZE, target_size)
+        if self._image_aspect_ratio <= 0:
+            self._image_aspect_ratio = 1.0
+        
+        scale_width = canvas_width
+        scale_height = scale_width / self._image_aspect_ratio
+        
+        if scale_height > canvas_height:
+            scale_height = canvas_height
+            scale_width = scale_height * self._image_aspect_ratio
+        
+        self._scaled_image_width = max(MIN_SCALE_SIZE, int(scale_width))
+        self._scaled_image_height = max(MIN_SCALE_SIZE, int(scale_height))
         
         for state, pil_image in self._pil_images.items():
             try:
