@@ -307,6 +307,7 @@ class ImagePetBase(PetBase):
         self._images_loaded: bool = False
         self._eat_timer: Optional[Any] = None
         self._is_eating: bool = False
+        self._last_known_size: int = 0
         
         self._load_pil_images()
     
@@ -325,16 +326,29 @@ class ImagePetBase(PetBase):
                 print(f"Warning: Image not found: {image_path}")
     
     def _convert_to_tk_images(self):
-        if self._images_loaded:
+        if self._images_loaded and self._last_known_size == self._size:
             return
+        
+        self._tk_images.clear()
         
         for state, pil_image in self._pil_images.items():
             try:
-                self._tk_images[state] = ImageTk.PhotoImage(pil_image)
+                if self._size <= 0:
+                    target_size = 100
+                else:
+                    target_size = self._size
+                
+                resized_image = pil_image.resize(
+                    (target_size, target_size),
+                    PILImage.Resampling.LANCZOS
+                )
+                
+                self._tk_images[state] = ImageTk.PhotoImage(resized_image)
             except Exception as e:
                 print(f"Warning: Failed to convert image {state}: {e}")
         
         self._images_loaded = True
+        self._last_known_size = self._size
     
     def _get_state_from_attributes(self) -> PetState:
         attrs = self.get_nurture_attributes()
