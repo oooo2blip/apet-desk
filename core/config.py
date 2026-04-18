@@ -82,13 +82,12 @@ class PetState(Enum):
     HAPPY = "happy"
     SLEEP = "sleep"
     JUMP = "jump"
+    SAD = "sad"
+    EAT = "eat"
 
 
 class PetType(Enum):
     CAT = "cat"
-    DOG = "dog"
-    RABBIT = "rabbit"
-    FANTASY = "fantasy"
 
 
 class SkinColor(Enum):
@@ -164,10 +163,7 @@ class ColorPalette:
 
 class PetDisplayNames:
     PET_NAMES = {
-        PetType.CAT: "猫咪",
-        PetType.DOG: "狗狗",
-        PetType.RABBIT: "兔子",
-        PetType.FANTASY: "幻灵"
+        PetType.CAT: "猫咪"
     }
     SKIN_NAMES = {
         SkinColor.ORANGE: "橘色",

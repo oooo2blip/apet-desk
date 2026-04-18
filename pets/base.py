@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Callable, Tuple
 import math
+import os
+from PIL import Image as PILImage, ImageTk
 from core.config import (
     PetState,
     SkinColor,
@@ -275,5 +277,133 @@ class PetBase(ABC):
         pass
     
     @abstractmethod
+    def _draw_jump(self, center: int):
+        pass
+
+
+class ImagePetBase(PetBase):
+    IMAGE_STATES = {
+        PetState.IDLE: "idle",
+        PetState.HAPPY: "happy",
+        PetState.SLEEP: "sleep",
+        PetState.SAD: "sad",
+        PetState.EAT: "eat",
+        PetState.WALK: "idle",
+        PetState.JUMP: "happy"
+    }
+    
+    def __init__(self, images_dir: str = None):
+        super().__init__(SkinColor.ORANGE)
+        
+        if images_dir is None:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            images_dir = os.path.join(base_dir, "images")
+        
+        self._images_dir = images_dir
+        self._pil_images: Dict[str, PILImage.Image] = {}
+        self._tk_images: Dict[str, ImageTk.PhotoImage] = {}
+        self._current_image_ref: Optional[ImageTk.PhotoImage] = None
+        self._canvas_image_id: Optional[int] = None
+        self._images_loaded: bool = False
+        self._eat_timer: Optional[Any] = None
+        self._is_eating: bool = False
+        
+        self._load_pil_images()
+    
+    def _load_pil_images(self):
+        required_states = ["idle", "happy", "sad", "sleep", "eat"]
+        
+        for state in required_states:
+            image_path = os.path.join(self._images_dir, f"{state}.png")
+            if os.path.exists(image_path):
+                try:
+                    pil_image = PILImage.open(image_path).convert("RGBA")
+                    self._pil_images[state] = pil_image
+                except Exception as e:
+                    print(f"Warning: Failed to load image {image_path}: {e}")
+            else:
+                print(f"Warning: Image not found: {image_path}")
+    
+    def _convert_to_tk_images(self):
+        if self._images_loaded:
+            return
+        
+        for state, pil_image in self._pil_images.items():
+            try:
+                self._tk_images[state] = ImageTk.PhotoImage(pil_image)
+            except Exception as e:
+                print(f"Warning: Failed to convert image {state}: {e}")
+        
+        self._images_loaded = True
+    
+    def _get_state_from_attributes(self) -> PetState:
+        attrs = self.get_nurture_attributes()
+        mood = attrs.get("mood", NurtureConfig.DEFAULT_MOOD)
+        hunger = attrs.get("hunger", NurtureConfig.DEFAULT_HUNGER)
+        energy = attrs.get("energy", NurtureConfig.DEFAULT_ENERGY)
+        
+        if energy <= NurtureConfig.CRITICAL_ENERGY_THRESHOLD:
+            return PetState.SLEEP
+        
+        if hunger <= NurtureConfig.CRITICAL_HUNGER_THRESHOLD:
+            return PetState.SAD
+        
+        if mood <= NurtureConfig.LOW_MOOD_THRESHOLD:
+            return PetState.SAD
+        
+        if mood >= 80:
+            return PetState.HAPPY
+        
+        return PetState.IDLE
+    
+    def _get_image_key_for_state(self, state: PetState) -> str:
+        return self.IMAGE_STATES.get(state, "idle")
+    
+    def draw(self):
+        if self._renderer is None:
+            return
+        
+        self._renderer.clear()
+        self._convert_to_tk_images()
+        
+        if self._nurture_manager is not None:
+            recommended_state = self._get_state_from_attributes()
+            if self._state not in [PetState.WALK, PetState.JUMP]:
+                self._state = recommended_state
+        
+        image_key = self._get_image_key_for_state(self._state)
+        image = self._tk_images.get(image_key)
+        
+        if image is None:
+            image = self._tk_images.get("idle")
+        
+        if image is not None and hasattr(self._renderer, '_canvas'):
+            canvas = self._renderer._canvas
+            center = self._size // 2
+            
+            if self._canvas_image_id is not None:
+                try:
+                    canvas.delete(self._canvas_image_id)
+                except Exception:
+                    pass
+            
+            self._current_image_ref = image
+            self._canvas_image_id = canvas.create_image(
+                center, center,
+                image=image
+            )
+    
+    def _draw_idle(self, center: int):
+        pass
+    
+    def _draw_walk(self, center: int):
+        pass
+    
+    def _draw_happy(self, center: int):
+        pass
+    
+    def _draw_sleep(self, center: int):
+        pass
+    
     def _draw_jump(self, center: int):
         pass

@@ -37,8 +37,8 @@ class PetApplication:
         self._canvas: Optional[tk.Canvas] = None
         self._renderer: Optional[Renderer] = None
         self._current_pet: Optional[PetBase] = None
-        self._current_pet_type: PetType = PetType.FANTASY
-        self._current_skin: SkinColor = SkinColor.PASTEL_LAVENDER
+        self._current_pet_type: PetType = PetType.CAT
+        self._current_skin: SkinColor = SkinColor.ORANGE
         
         self._animation_engine: Optional[AnimationEngine] = None
         self._walk_controller: Optional[WalkController] = None
@@ -286,10 +286,9 @@ class PetApplication:
         if self._nurture_manager is not None:
             success = self._nurture_manager.feed()
             if success:
-                self._behavior_engine.trigger_interaction(PetState.HAPPY)
+                self._behavior_engine.trigger_interaction(PetState.EAT, duration=2000)
                 
-                if self._current_pet is not None and hasattr(self._current_pet, 'trigger_pulse'):
-                    self._current_pet.trigger_pulse()
+                self._root.after(2000, self._after_eat_happy)
                 
                 if self._speech_bubble is not None:
                     self._speech_bubble.show("好吃！谢谢主人~", 3000, "happy")
@@ -299,6 +298,9 @@ class PetApplication:
                 
                 if self._sound_enabled:
                     self._play_click_sound()
+    
+    def _after_eat_happy(self):
+        self._behavior_engine.trigger_interaction(PetState.HAPPY, duration=1000)
     
     def _on_middle_click(self, event: tk.Event):
         if self._drag_handler.is_dragging:
@@ -381,10 +383,9 @@ class PetApplication:
         if self._nurture_manager is not None:
             success = self._nurture_manager.feed()
             if success:
-                self._behavior_engine.trigger_interaction(PetState.HAPPY)
+                self._behavior_engine.trigger_interaction(PetState.EAT, duration=2000)
                 
-                if self._current_pet is not None and hasattr(self._current_pet, 'trigger_pulse'):
-                    self._current_pet.trigger_pulse()
+                self._root.after(2000, self._after_eat_happy)
                 
                 if self._speech_bubble is not None:
                     self._speech_bubble.show("好吃！谢谢主人~", 3000, "happy")

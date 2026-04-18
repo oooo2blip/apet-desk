@@ -96,24 +96,6 @@ class ContextMenu:
     def _create_context_menu(self) -> Menu:
         context_menu = Menu(self._root, tearoff=0)
         
-        pet_menu = Menu(context_menu, tearoff=0)
-        for pet_type in PetFactory.get_available_pet_types():
-            display_name = PetFactory.get_pet_display_name(pet_type)
-            pet_menu.add_command(
-                label=display_name,
-                command=lambda pt=pet_type: self._on_pet_change(pt)
-            )
-        context_menu.add_cascade(label="切换宠物", menu=pet_menu)
-        
-        skin_menu = Menu(context_menu, tearoff=0)
-        for skin_color in SkinManager.get_available_skins():
-            display_name = PetFactory.get_skin_display_name(skin_color)
-            skin_menu.add_command(
-                label=display_name,
-                command=lambda sc=skin_color: self._on_skin_change(sc)
-            )
-        context_menu.add_cascade(label="更换皮肤", menu=skin_menu)
-        
         context_menu.add_command(label="设置", command=self._on_settings_open)
         context_menu.add_command(label="状态面板", command=self._on_status_panel_open)
         context_menu.add_separator()

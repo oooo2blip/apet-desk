@@ -1,9 +1,5 @@
 from typing import Dict, Type, List, Optional
-from pets.base import PetBase
-from pets.cat import CatPet
-from pets.dog import DogPet
-from pets.rabbit import RabbitPet
-from pets.fantasy import FantasyPet
+from pets.base import PetBase, ImagePetBase
 from core.config import (
     PetType,
     SkinColor,
@@ -14,10 +10,7 @@ from core.config import (
 
 class PetFactory:
     _registry: Dict[PetType, Type[PetBase]] = {
-        PetType.CAT: CatPet,
-        PetType.DOG: DogPet,
-        PetType.RABBIT: RabbitPet,
-        PetType.FANTASY: FantasyPet
+        PetType.CAT: ImagePetBase
     }
     
     @classmethod
@@ -29,6 +22,10 @@ class PetFactory:
         pet_class = cls._registry.get(pet_type)
         if pet_class is None:
             raise ValueError(f"Unknown pet type: {pet_type}")
+        
+        if pet_class == ImagePetBase:
+            return pet_class()
+        
         return pet_class(skin_color)
     
     @classmethod
