@@ -117,17 +117,25 @@ class SettingsWindow:
         initial_size: int,
         sound_enabled: bool,
         auto_start: bool,
+        initial_alpha: float,
+        initial_topmost: bool,
         on_size_change: Callable[[int], None],
         on_sound_toggle: Callable[[bool], None],
-        on_autostart_toggle: Callable[[bool], None]
+        on_autostart_toggle: Callable[[bool], None],
+        on_alpha_change: Callable[[float], None],
+        on_topmost_toggle: Callable[[bool], None]
     ):
         self._root = root
         self._initial_size = initial_size
         self._sound_enabled = sound_enabled
         self._auto_start = auto_start
+        self._initial_alpha = initial_alpha
+        self._initial_topmost = initial_topmost
         self._on_size_change = on_size_change
         self._on_sound_toggle = on_sound_toggle
         self._on_autostart_toggle = on_autostart_toggle
+        self._on_alpha_change = on_alpha_change
+        self._on_topmost_toggle = on_topmost_toggle
         
         self._window: Optional[Toplevel] = None
     
@@ -147,7 +155,7 @@ class SettingsWindow:
         self._create_widgets()
     
     def _create_widgets(self):
-        Label(self._window, text="宠物大小:").pack(pady=10)
+        Label(self._window, text="宠物大小:").pack(pady=5)
         
         size_scale = Scale(
             self._window,
@@ -157,7 +165,28 @@ class SettingsWindow:
             command=self._on_size_update
         )
         size_scale.set(self._initial_size)
-        size_scale.pack(pady=5)
+        size_scale.pack(pady=2)
+        
+        Label(self._window, text="透明度:").pack(pady=5)
+        
+        alpha_scale = Scale(
+            self._window,
+            from_=int(UIConfig.MIN_ALPHA * 100),
+            to=int(UIConfig.MAX_ALPHA * 100),
+            orient=tk.HORIZONTAL,
+            command=self._on_alpha_update
+        )
+        alpha_scale.set(int(self._initial_alpha * 100))
+        alpha_scale.pack(pady=2)
+        
+        self._topmost_var = tk.BooleanVar(value=self._initial_topmost)
+        topmost_check = Checkbutton(
+            self._window,
+            text="窗口置顶",
+            variable=self._topmost_var,
+            command=self._on_topmost_update
+        )
+        topmost_check.pack(pady=5)
         
         self._sound_var = tk.BooleanVar(value=self._sound_enabled)
         sound_check = Checkbutton(
@@ -166,7 +195,7 @@ class SettingsWindow:
             variable=self._sound_var,
             command=self._on_sound_update
         )
-        sound_check.pack(pady=10)
+        sound_check.pack(pady=5)
         
         self._autostart_var = tk.BooleanVar(value=self._auto_start)
         autostart_check = Checkbutton(
@@ -175,13 +204,20 @@ class SettingsWindow:
             variable=self._autostart_var,
             command=self._on_autostart_update
         )
-        autostart_check.pack(pady=10)
+        autostart_check.pack(pady=5)
         
-        Button(self._window, text="关闭", command=self._on_close).pack(pady=20)
+        Button(self._window, text="关闭", command=self._on_close).pack(pady=10)
     
     def _on_size_update(self, value: str):
         size = int(value)
         self._on_size_change(size)
+    
+    def _on_alpha_update(self, value: str):
+        alpha = int(value) / 100.0
+        self._on_alpha_change(alpha)
+    
+    def _on_topmost_update(self):
+        self._on_topmost_toggle(self._topmost_var.get())
     
     def _on_sound_update(self):
         self._on_sound_toggle(self._sound_var.get())

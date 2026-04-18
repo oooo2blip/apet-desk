@@ -12,6 +12,7 @@ from .config import (
 )
 from .animation import AnimationEngine
 from .behavior import BehaviorEngine
+from .persistent_config import PersistentConfig
 
 __all__ = [
     "PetState",
@@ -25,5 +26,6 @@ __all__ = [
     "PetDisplayNames",
     "AnimationFrames",
     "AnimationEngine",
-    "BehaviorEngine"
+    "BehaviorEngine",
+    "PersistentConfig"
 ]

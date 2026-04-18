@@ -16,6 +16,7 @@ from core.config import (
 from core.animation import AnimationEngine, WalkController
 from core.behavior import BehaviorEngine
 from core.nurture import NurtureManager
+from core.persistent_config import PersistentConfig
 from pets.base import PetBase
 from pets.factory import PetFactory, SkinManager
 from ui.renderer import Renderer
@@ -27,9 +28,14 @@ class PetApplication:
         self._root = tk.Tk()
         self._root.title("萌宠桌面小助手")
         
-        self._pet_size: int = UIConfig.DEFAULT_PET_SIZE
-        self._sound_enabled: bool = True
-        self._auto_start: bool = False
+        self._config: PersistentConfig = PersistentConfig()
+        self._load_config()
+        
+        self._pet_size: int = self._config.pet_size
+        self._sound_enabled: bool = self._config.sound_enabled
+        self._auto_start: bool = self._config.auto_start
+        self._alpha: float = self._config.alpha
+        self._topmost: bool = self._config.topmost
         
         self._x: int = 0
         self._y: int = 0
@@ -37,8 +43,8 @@ class PetApplication:
         self._canvas: Optional[tk.Canvas] = None
         self._renderer: Optional[Renderer] = None
         self._current_pet: Optional[PetBase] = None
-        self._current_pet_type: PetType = PetType.CAT
-        self._current_skin: SkinColor = SkinColor.ORANGE
+        self._current_pet_type: PetType = self._config.pet_type
+        self._current_skin: SkinColor = self._config.skin_color
         
         self._animation_engine: Optional[AnimationEngine] = None
         self._walk_controller: Optional[WalkController] = None
@@ -84,14 +90,23 @@ class PetApplication:
     
     def _setup_window(self):
         self._root.overrideredirect(True)
-        self._root.attributes("-topmost", True)
+        self._root.attributes("-topmost", self._topmost)
         self._root.attributes("-transparentcolor", UIConfig.TRANSPARENT_COLOR)
+        self._root.attributes("-alpha", self._alpha)
         
         screen_width = self._root.winfo_screenwidth()
         screen_height = self._root.winfo_screenheight()
         
-        self._x = screen_width - self._pet_size - UIConfig.DEFAULT_POSITION_OFFSET_X
-        self._y = screen_height - self._pet_size - UIConfig.DEFAULT_POSITION_OFFSET_Y
+        if self._config.x is not None and self._config.y is not None:
+            self._x = self._config.x
+            self._y = self._config.y
+            if self._x < 0 or self._x > screen_width - self._pet_size:
+                self._x = screen_width - self._pet_size - UIConfig.DEFAULT_POSITION_OFFSET_X
+            if self._y < 0 or self._y > screen_height - self._pet_size:
+                self._y = screen_height - self._pet_size - UIConfig.DEFAULT_POSITION_OFFSET_Y
+        else:
+            self._x = screen_width - self._pet_size - UIConfig.DEFAULT_POSITION_OFFSET_X
+            self._y = screen_height - self._pet_size - UIConfig.DEFAULT_POSITION_OFFSET_Y
         
         self._update_window_geometry()
     
@@ -157,6 +172,33 @@ class PetApplication:
     def _get_save_directory(self) -> str:
         return os.path.dirname(os.path.abspath(__file__))
     
+    def _load_config(self):
+        save_dir = self._get_save_directory()
+        self._config.load(save_dir)
+    
+    def _save_app_config(self):
+        try:
+            save_dir = self._get_save_directory()
+            self._config.save(save_dir)
+        except Exception:
+            pass
+    
+    def _update_alpha(self, alpha: float):
+        self._alpha = max(UIConfig.MIN_ALPHA, min(UIConfig.MAX_ALPHA, alpha))
+        self._config.alpha = self._alpha
+        try:
+            self._root.attributes("-alpha", self._alpha)
+        except Exception:
+            pass
+    
+    def _update_topmost(self, topmost: bool):
+        self._topmost = topmost
+        self._config.topmost = self._topmost
+        try:
+            self._root.attributes("-topmost", self._topmost)
+        except Exception:
+            pass
+    
     def _on_nurture_attribute_change(self, attr_name: str, old_value: int, new_value: int):
         pass
     
@@ -195,9 +237,13 @@ class PetApplication:
             self._pet_size,
             self._sound_enabled,
             self._auto_start,
+            self._alpha,
+            self._topmost,
             self._on_size_change,
             self._on_sound_toggle,
-            self._on_autostart_toggle
+            self._on_autostart_toggle,
+            self._update_alpha,
+            self._update_topmost
         )
         
         self._speech_bubble = SpeechBubble(
@@ -243,6 +289,8 @@ class PetApplication:
     def _on_position_update(self, x: int, y: int):
         self._x = x
         self._y = y
+        self._config.x = x
+        self._config.y = y
         self._update_window_geometry()
         
         if self._speech_bubble is not None and self._speech_bubble.is_visible:
@@ -335,6 +383,7 @@ class PetApplication:
     
     def _on_pet_change(self, pet_type: PetType):
         self._current_pet_type = pet_type
+        self._config.pet_type = pet_type
         self._create_pet()
         if self._current_pet is not None:
             self._current_pet.state = self._behavior_engine.current_state
@@ -342,12 +391,14 @@ class PetApplication:
     
     def _on_skin_change(self, skin_color: SkinColor):
         self._current_skin = skin_color
+        self._config.skin_color = skin_color
         if self._current_pet is not None:
             self._current_pet.skin_color = skin_color
             self._current_pet.draw()
     
     def _on_size_change(self, size: int):
         self._pet_size = size
+        self._config.pet_size = size
         self._update_window_geometry()
         self._canvas.config(width=self._pet_size, height=self._pet_size)
         
@@ -363,9 +414,11 @@ class PetApplication:
     
     def _on_sound_toggle(self, enabled: bool):
         self._sound_enabled = enabled
+        self._config.sound_enabled = enabled
     
     def _on_autostart_toggle(self, enabled: bool):
         self._auto_start = enabled
+        self._config.auto_start = enabled
     
     def _show_settings(self):
         self._settings_window.show()
@@ -433,6 +486,8 @@ class PetApplication:
                 self._nurture_manager.save(save_dir)
             except Exception:
                 pass
+        
+        self._save_app_config()
     
     def _stop_all_engines(self):
         self._is_running = False
