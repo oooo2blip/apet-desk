@@ -292,6 +292,9 @@ class ImagePetBase(PetBase):
         PetState.JUMP: "happy"
     }
     
+    _RESIZE_FILTER_FAST = PILImage.Resampling.BILINEAR
+    _RESIZE_FILTER_QUALITY = PILImage.Resampling.LANCZOS
+    
     def __init__(self, images_dir: str = None):
         super().__init__(SkinColor.ORANGE)
         
@@ -308,6 +311,7 @@ class ImagePetBase(PetBase):
         self._eat_timer: Optional[Any] = None
         self._is_eating: bool = False
         self._last_known_size: int = 0
+        self._last_known_state: Optional[str] = None
         
         self._load_pil_images()
     
@@ -325,11 +329,13 @@ class ImagePetBase(PetBase):
             else:
                 print(f"Warning: Image not found: {image_path}")
     
-    def _convert_to_tk_images(self):
+    def _convert_to_tk_images(self, use_fast_filter: bool = False):
         if self._images_loaded and self._last_known_size == self._size:
             return
         
         self._tk_images.clear()
+        
+        resize_filter = self._RESIZE_FILTER_FAST if use_fast_filter else self._RESIZE_FILTER_QUALITY
         
         for state, pil_image in self._pil_images.items():
             try:
@@ -340,7 +346,7 @@ class ImagePetBase(PetBase):
                 
                 resized_image = pil_image.resize(
                     (target_size, target_size),
-                    PILImage.Resampling.LANCZOS
+                    resize_filter
                 )
                 
                 self._tk_images[state] = ImageTk.PhotoImage(resized_image)
@@ -377,7 +383,6 @@ class ImagePetBase(PetBase):
         if self._renderer is None:
             return
         
-        self._renderer.clear()
         self._convert_to_tk_images()
         
         if self._nurture_manager is not None:
@@ -397,9 +402,11 @@ class ImagePetBase(PetBase):
             
             if self._canvas_image_id is not None:
                 try:
-                    canvas.delete(self._canvas_image_id)
+                    canvas.itemconfig(self._canvas_image_id, image=image)
+                    self._current_image_ref = image
+                    return
                 except Exception:
-                    pass
+                    self._canvas_image_id = None
             
             self._current_image_ref = image
             self._canvas_image_id = canvas.create_image(
