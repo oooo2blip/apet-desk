@@ -349,15 +349,17 @@ class ImagePetBase(PetBase):
         else:
             target_size = self._size
         
+        MIN_SCALE_SIZE = 1
+        
         if self._image_aspect_ratio > 1.0:
-            self._scaled_image_width = target_size
-            self._scaled_image_height = int(target_size / self._image_aspect_ratio)
+            self._scaled_image_width = max(MIN_SCALE_SIZE, target_size)
+            self._scaled_image_height = max(MIN_SCALE_SIZE, int(target_size / self._image_aspect_ratio))
         elif self._image_aspect_ratio < 1.0:
-            self._scaled_image_height = target_size
-            self._scaled_image_width = int(target_size * self._image_aspect_ratio)
+            self._scaled_image_height = max(MIN_SCALE_SIZE, target_size)
+            self._scaled_image_width = max(MIN_SCALE_SIZE, int(target_size * self._image_aspect_ratio))
         else:
-            self._scaled_image_width = target_size
-            self._scaled_image_height = target_size
+            self._scaled_image_width = max(MIN_SCALE_SIZE, target_size)
+            self._scaled_image_height = max(MIN_SCALE_SIZE, target_size)
         
         for state, pil_image in self._pil_images.items():
             try:
@@ -413,7 +415,13 @@ class ImagePetBase(PetBase):
         if image is None:
             image = self._tk_images.get("idle")
         
-        if image is not None and hasattr(self._renderer, '_canvas'):
+        if image is None:
+            return
+        
+        if self._scaled_image_width <= 0 or self._scaled_image_height <= 0:
+            return
+        
+        if hasattr(self._renderer, '_canvas'):
             canvas = self._renderer._canvas
             
             canvas_center_x = self._size // 2
