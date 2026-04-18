@@ -202,9 +202,62 @@ def create_cat_image(state: str, size: int = 200):
         draw.text((center + 35, center - 65), "z", fill=(150, 150, 150, 200), font=font)
         draw.text((center + 45, center - 75), "z", fill=(150, 150, 150, 150), font=font)
     
+    elif state == "eat":
+        body_color = (255, 165, 0, 255)
+        inner_ear_color = (255, 182, 193, 255)
+        food_color = (255, 220, 100, 255)
+        draw.ellipse([center - cat_radius, center - cat_radius + 20,
+                      center + cat_radius, center + cat_radius + 20],
+                     fill=body_color)
+        draw.ellipse([center - 45, center - 60,
+                      center + 45, center + 10],
+                     fill=body_color)
+        draw.polygon([center - 35, center - 40,
+                      center - 50, center - 70,
+                      center - 20, center - 55],
+                     fill=body_color)
+        draw.polygon([center + 35, center - 40,
+                      center + 50, center - 70,
+                      center + 20, center - 55],
+                     fill=body_color)
+        draw.polygon([center - 35, center - 45,
+                      center - 45, center - 60,
+                      center - 28, center - 52],
+                     fill=inner_ear_color)
+        draw.polygon([center + 35, center - 45,
+                      center + 45, center - 60,
+                      center + 28, center - 52],
+                     fill=inner_ear_color)
+        draw.ellipse([center - 15, center - 28,
+                      center - 8, center - 18],
+                     fill=(0, 0, 0, 255))
+        draw.ellipse([center + 8, center - 28,
+                      center + 15, center - 18],
+                     fill=(0, 0, 0, 255))
+        draw.ellipse([center - 5, center - 12,
+                      center + 5, center - 2],
+                     fill=(255, 100, 100, 255))
+        draw.ellipse([center - 8, center + 8,
+                      center + 8, center + 28],
+                     fill=food_color)
+        draw.ellipse([center - 18, center + 18,
+                      center - 2, center + 32],
+                     fill=body_color)
+        draw.line([center - 20, center + 20,
+                   center - 10, center + 5],
+                  fill=(0, 0, 0, 200), width=2)
+        draw.line([center - 35, center - 18, center - 18, center - 15],
+                  fill=(0, 0, 0, 255), width=2)
+        draw.line([center - 35, center - 13, center - 18, center - 10],
+                  fill=(0, 0, 0, 255), width=2)
+        draw.line([center + 18, center - 15, center + 35, center - 18],
+                  fill=(0, 0, 0, 255), width=2)
+        draw.line([center + 18, center - 10, center + 35, center - 13],
+                  fill=(0, 0, 0, 255), width=2)
+    
     return img
 
-states = ["idle", "happy", "sad", "sleep"]
+states = ["idle", "happy", "sad", "sleep", "eat"]
 for state in states:
     img = create_cat_image(state)
     file_path = os.path.join(images_dir, f"{state}.png")
