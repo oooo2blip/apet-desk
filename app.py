@@ -63,6 +63,9 @@ class PetApplication:
         
         self._is_running: bool = False
         
+        self._resize_debounce_timer: Optional[str] = None
+        self._RESIZE_DEBOUNCE_DELAY: int = 150
+        
         atexit.register(self._cleanup)
         self._setup_signal_handlers()
         
@@ -397,6 +400,18 @@ class PetApplication:
             self._current_pet.draw()
     
     def _on_size_change(self, size: int):
+        if self._resize_debounce_timer is not None:
+            try:
+                self._root.after_cancel(self._resize_debounce_timer)
+            except Exception:
+                pass
+        
+        self._resize_debounce_timer = self._root.after(
+            self._RESIZE_DEBOUNCE_DELAY,
+            lambda: self._apply_size_change(size)
+        )
+    
+    def _apply_size_change(self, size: int):
         self._pet_size = size
         self._config.pet_size = size
         self._update_window_geometry()
