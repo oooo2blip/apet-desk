@@ -1,11 +1,11 @@
 {
-  "pet_size": 74,
+  "pet_size": 200,
   "alpha": 1.0,
   "topmost": true,
   "sound_enabled": true,
   "auto_start": false,
-  "x": 1478,
-  "y": 880,
+  "x": 1391,
+  "y": 807,
   "pet_type": "cat",
   "skin_color": "orange",
   "save_config": true

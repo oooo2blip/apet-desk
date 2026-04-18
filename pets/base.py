@@ -312,6 +312,9 @@ class ImagePetBase(PetBase):
         self._is_eating: bool = False
         self._last_known_size: int = 0
         self._last_known_state: Optional[str] = None
+        self._image_aspect_ratio: float = 1.0
+        self._scaled_image_width: int = 0
+        self._scaled_image_height: int = 0
         
         self._load_pil_images()
     
@@ -324,6 +327,10 @@ class ImagePetBase(PetBase):
                 try:
                     pil_image = PILImage.open(image_path).convert("RGBA")
                     self._pil_images[state] = pil_image
+                    
+                    if self._image_aspect_ratio == 1.0:
+                        img_width, img_height = pil_image.size
+                        self._image_aspect_ratio = img_width / img_height
                 except Exception as e:
                     print(f"Warning: Failed to load image {image_path}: {e}")
             else:
@@ -337,15 +344,25 @@ class ImagePetBase(PetBase):
         
         resize_filter = self._RESIZE_FILTER_FAST if use_fast_filter else self._RESIZE_FILTER_QUALITY
         
+        if self._size <= 0:
+            target_size = 100
+        else:
+            target_size = self._size
+        
+        if self._image_aspect_ratio > 1.0:
+            self._scaled_image_width = target_size
+            self._scaled_image_height = int(target_size / self._image_aspect_ratio)
+        elif self._image_aspect_ratio < 1.0:
+            self._scaled_image_height = target_size
+            self._scaled_image_width = int(target_size * self._image_aspect_ratio)
+        else:
+            self._scaled_image_width = target_size
+            self._scaled_image_height = target_size
+        
         for state, pil_image in self._pil_images.items():
             try:
-                if self._size <= 0:
-                    target_size = 100
-                else:
-                    target_size = self._size
-                
                 resized_image = pil_image.resize(
-                    (target_size, target_size),
+                    (self._scaled_image_width, self._scaled_image_height),
                     resize_filter
                 )
                 
@@ -398,7 +415,9 @@ class ImagePetBase(PetBase):
         
         if image is not None and hasattr(self._renderer, '_canvas'):
             canvas = self._renderer._canvas
-            center = self._size // 2
+            
+            canvas_center_x = self._size // 2
+            canvas_center_y = self._size // 2
             
             if self._canvas_image_id is not None:
                 try:
@@ -410,7 +429,7 @@ class ImagePetBase(PetBase):
             
             self._current_image_ref = image
             self._canvas_image_id = canvas.create_image(
-                center, center,
+                canvas_center_x, canvas_center_y,
                 image=image
             )
     
